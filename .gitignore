@@ -22,3 +22,56 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Node.js dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# TypeScript
+*.tsbuildinfo
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Testing & coverage
+coverage/
+*.lcov
+jest-cache/
+jest-temp/
+.playwright/
+.cypress/
+
+# Logs
+logs
+*.log
+*.log.*
+
+# IDE/editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.tmp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Storybook
+storybook-static/
+
+# Misc
+*.tgz

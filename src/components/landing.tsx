@@ -2,7 +2,7 @@ import { useState } from "react"
 import axios from "axios"
 import { Github, Globe, Loader2, CheckCircle2, Rocket, Terminal, Zap, Sparkles, ArrowRight, Server, CloudLightning } from "lucide-react"
 
-const BACKEND_UPLOAD_URL = "http://localhost:3000";
+const BACKEND_UPLOAD_URL = import.meta.env.VITE_BACKEND_UPLOAD_URL || "http://localhost:3000";
 
 export function Landing() {
   const [repoUrl, setRepoUrl] = useState("");
