@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import axios from "axios";
 
 const AUTH_URL = import.meta.env.VITE_AUTH_URL || "http://localhost:4000";
