@@ -1,16 +1,26 @@
 import { useState } from "react"
 import axios from "axios"
-import { Github, Globe, Loader2, CheckCircle2, Rocket, Terminal, Zap, Sparkles, ArrowRight, Server, CloudLightning } from "lucide-react"
-
+import { Github, Globe, Loader2, CheckCircle2, Rocket, Terminal, Zap, Sparkles, ArrowRight, Server, CloudLightning, LogOut, User as UserIcon } from "lucide-react"
+import { useNavigate } from "react-router-dom"
+import { useAuth } from "../contexts/AuthContext"
 const BACKEND_UPLOAD_URL = import.meta.env.VITE_BACKEND_UPLOAD_URL || "http://localhost:3000";
 
 export function Landing() {
+  const { user, logout } = useAuth();
+
+
   const [repoUrl, setRepoUrl] = useState("");
   const [uploadId, setUploadId] = useState("");
   const [uploading, setUploading] = useState(false);
   const [deployed, setDeployed] = useState(false);
 
+  const navigate = useNavigate();
+
   const handleDeploy = async () => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
     if (!repoUrl) return;
     setUploading(true);
     try {
@@ -62,10 +72,43 @@ export function Landing() {
               <a href="#" className="hidden sm:block text-sm font-medium text-slate-400 hover:text-white transition-all">Features</a>
               <a href="#" className="hidden sm:block text-sm font-medium text-slate-400 hover:text-white transition-all">Pricing</a>
               <div className="hidden sm:block h-5 w-[1px] bg-white/10"></div>
-              <a href="https://github.com" target="_blank" rel="noreferrer" className="flex items-center gap-2 text-sm font-medium bg-white/5 hover:bg-white/10 px-5 py-2.5 rounded-full border border-white/10 backdrop-blur-md transition-all text-white hover:scale-105 active:scale-95">
-                <Github className="w-4 h-4" />
-                <span className="hidden sm:inline">Connect</span>
-              </a>
+              {user ? (
+                <div className="relative group/profile z-50">
+                  <button className="flex items-center gap-2 sm:gap-3 text-sm font-medium bg-white/5 hover:bg-white/10 px-4 py-2 sm:py-2.5 rounded-full border border-white/10 backdrop-blur-md transition-all text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50">
+                    {user.avatar ? (
+                      <img src={user.avatar} alt="Avatar" className="w-6 h-6 rounded-full border border-indigo-500/30 object-cover" />
+                    ) : (
+                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center border border-indigo-500/30 text-white font-bold text-xs ring-2 ring-transparent group-hover/profile:ring-indigo-500/50 transition-all">
+                        {user.name?.charAt(0).toUpperCase() || "U"}
+                      </div>
+                    )}
+                    <span className="hidden sm:inline-block max-w-[100px] truncate">{user.name}</span>
+                  </button>
+
+                  <div className="absolute right-0 top-full mt-2 w-56 bg-[#0a0a16]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] overflow-hidden opacity-0 translate-y-2 group-hover/profile:opacity-100 group-hover/profile:translate-y-0 transition-all duration-300 pointer-events-none group-hover/profile:pointer-events-auto z-50">
+                    <div className="p-4 border-b border-white/5 bg-gradient-to-b from-white/[0.04] to-transparent">
+                      <p className="text-sm font-bold text-white truncate">{user.name}</p>
+                      <p className="text-xs text-slate-400 truncate mt-0.5">{user.email}</p>
+                    </div>
+                    <div className="p-2 space-y-1 bg-white/[0.01]">
+                      <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-all cursor-default">
+                        <UserIcon className="w-4 h-4 text-slate-400" />
+                        Profile Settings
+                      </button>
+                      <div className="h-px bg-white/5 my-1" />
+                      <button onClick={logout} className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 rounded-xl transition-all font-medium">
+                        <LogOut className="w-4 h-4" />
+                        Logout
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <a href="https://github.com" target="_blank" rel="noreferrer" className="flex items-center gap-2 text-sm font-medium bg-white/5 hover:bg-white/10 px-5 py-2.5 rounded-full border border-white/10 backdrop-blur-md transition-all text-white hover:scale-105 active:scale-95">
+                  <Github className="w-4 h-4" />
+                  <span className="hidden sm:inline">Connect</span>
+                </a>
+              )}
             </div>
           </div>
         </div>
@@ -125,7 +168,7 @@ export function Landing() {
                     </div>
                     <button
                       onClick={handleDeploy}
-                      disabled={!repoUrl || uploading}
+                      disabled={(user && !repoUrl) || uploading}
                       className="relative sm:w-auto w-full group/btn overflow-hidden bg-white text-[#050510] px-8 py-4 rounded-2xl text-lg font-bold transition-all disabled:opacity-50 shadow-[0_0_40px_rgba(255,255,255,0.2)] hover:shadow-[0_0_60px_rgba(255,255,255,0.4)] disabled:hover:shadow-none active:scale-95 flex items-center justify-center gap-3 shrink-0"
                     >
                       <div className="absolute inset-0 bg-gradient-to-r from-indigo-100 to-white opacity-0 group-hover/btn:opacity-100 transition-opacity" />
@@ -137,7 +180,7 @@ export function Landing() {
                           </>
                         ) : (
                           <>
-                            <span>Deploy Now</span>
+                            <span>{user ? "Deploy Now" : "Get Started"}</span>
                             <ArrowRight className="w-5 h-5 group-hover/btn:translate-x-1 transition-transform" />
                           </>
                         )}
