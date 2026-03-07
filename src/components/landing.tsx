@@ -4,6 +4,24 @@ import { Github, Globe, Loader2, CheckCircle2, Rocket, Terminal, Zap, Sparkles, 
 import { useNavigate } from "react-router-dom"
 import { useAuth } from "../contexts/AuthContext"
 const BACKEND_UPLOAD_URL = import.meta.env.VITE_BACKEND_UPLOAD_URL || "http://localhost:3000";
+const REQUEST_HANDLER_DOMAIN = import.meta.env.VITE_REQUEST_HANDLER_DOMAIN;
+
+let requestHandlerHostname = "localhost";
+let requestHandlerPort = ":3001";
+try {
+  if (REQUEST_HANDLER_DOMAIN) {
+    requestHandlerHostname = REQUEST_HANDLER_DOMAIN;
+    requestHandlerPort = "";
+  } else {
+    const url = new URL(BACKEND_UPLOAD_URL);
+    requestHandlerHostname = url.hostname;
+    if (requestHandlerHostname !== "localhost") {
+      requestHandlerPort = ""; // use default HTTP/HTTPS ports in production
+    }
+  }
+} catch (e) {
+  // Ignore
+}
 
 export function Landing() {
   const { user, logout } = useAuth();
@@ -307,12 +325,12 @@ export function Landing() {
                       <div className="flex items-center justify-between bg-[#06060c] border border-white/10 rounded-xl p-4 shadow-inner group cursor-text relative overflow-hidden">
                         <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
                         <a
-                          href={`http://${uploadId}.localhost:3001`}
+                          href={`http://${uploadId}.${requestHandlerHostname}${requestHandlerPort}`}
                           target="_blank"
                           rel="noreferrer"
                           className="text-indigo-400 hover:text-indigo-300 font-bold truncate pr-4 text-lg transition-colors relative z-10"
                         >
-                          {uploadId}.nexus.app
+                          {uploadId}.{requestHandlerHostname}{requestHandlerPort}
                         </a>
                       </div>
                     </div>
@@ -320,7 +338,7 @@ export function Landing() {
 
                   <div className="space-y-4">
                     <a
-                      href={`http://${uploadId}.localhost:3001`}
+                      href={`http://${uploadId}.${requestHandlerHostname}${requestHandlerPort}`}
                       target="_blank"
                       rel="noreferrer"
                       className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white px-6 py-4 rounded-xl text-lg font-bold transition-all shadow-[0_0_20px_rgba(99,102,241,0.3)] hover:shadow-[0_0_30px_rgba(99,102,241,0.5)] active:scale-95 flex items-center justify-center gap-3"
@@ -352,7 +370,7 @@ export function Landing() {
                     <div className="w-3 h-3 rounded-full bg-slate-700" />
                     <div className="mx-auto bg-[#000] border border-white/10 rounded-md py-1 px-20 flex items-center justify-center opacity-70">
                       <Globe className="w-3 h-3 text-slate-500 mr-2" />
-                      <span className="text-xs text-slate-400 font-mono">{uploadId.substring(0, 8)}.nexus.app</span>
+                      <span className="text-xs text-slate-400 font-mono">{uploadId.substring(0, 8)}.{requestHandlerHostname}{requestHandlerPort}</span>
                     </div>
                   </div>
 
