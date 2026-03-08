@@ -5,6 +5,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { Landing } from "./components/landing";
 import Features from "./components/Features";
 import Infrastructure from "./components/Infrastructure";
+import Pricing from "./components/Pricing";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -57,6 +58,7 @@ function AppRoutes() {
       {/* New pages */}
       <Route path="/features" element={<Features />} />
       <Route path="/infrastructure" element={<Infrastructure />} />
+      <Route path="/pricing" element={<Pricing />} />
 
       {/* Protected routes */}
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />

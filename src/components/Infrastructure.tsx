@@ -29,7 +29,7 @@ export default function Infrastructure() {
                         <div className="hidden md:flex items-center gap-8 absolute left-1/2 transform -translate-x-1/2">
                             <Link to="/features" className="text-sm font-medium text-slate-400 hover:text-white transition-all hover:scale-105 block">Features</Link>
                             <Link to="/infrastructure" className="text-sm font-bold text-white transition-all hover:scale-105 block">Infrastructure</Link>
-                            <a href="#" className="text-sm font-medium text-slate-400 hover:text-white transition-all hover:scale-105 block">Pricing</a>
+                            <Link to="/pricing" className="text-sm font-medium text-slate-400 hover:text-white transition-all hover:scale-105 block">Pricing</Link>
                         </div>
 
                         <div className="flex items-center gap-4">
