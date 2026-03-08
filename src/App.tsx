@@ -61,7 +61,7 @@ function AppRoutes() {
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
 
       {/* Public: deploy landing page */}
-      <Route path="/" element={<AuthRoute><Landing /></AuthRoute>} />
+      <Route path="/" element={<Landing />} />
 
       {/* Catch-all */}
       <Route path="*" element={<Navigate to="/" replace />} />
