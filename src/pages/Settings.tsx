@@ -7,7 +7,7 @@ import { Github, Save, CheckCircle2, ArrowLeft, Loader2, Key } from "lucide-reac
 const AUTH_URL = import.meta.env.VITE_AUTH_URL || "http://localhost:4000";
 
 export default function Settings() {
-    const { user, token } = useAuth();
+    const { user, token, setUser } = useAuth();
     const [githubToken, setGithubToken] = useState("");
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
@@ -157,6 +157,69 @@ export default function Settings() {
                                     )}
                                 </div>
                             </form>
+                        </div>
+                    </div>
+
+                    {/* Account Deletion */}
+                    <div className="p-8 flex flex-col md:flex-row gap-8 items-start">
+                        <div className="w-full md:w-1/3 space-y-2">
+                            <h3 className="text-lg font-semibold text-red-500">Danger Zone</h3>
+                            <p className="text-sm text-slate-400">Permanently remove your account and all associated projects from Nexus.</p>
+                        </div>
+
+                        <div className="w-full md:w-2/3 bg-red-500/5 border border-red-500/20 rounded-xl p-6">
+                            {user?.deletionScheduledAt ? (
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-3 text-red-400 bg-red-500/10 p-4 rounded-lg border border-red-500/20">
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                        <div>
+                                            <p className="font-bold">Account Deletion Scheduled</p>
+                                            <p className="text-sm">Your account and all artifacts will be permanently deleted on {new Date(user.deletionScheduledAt).toLocaleDateString()}.</p>
+                                        </div>
+                                    </div>
+                                    <p className="text-sm text-slate-400">Changed your mind? You can cancel the deletion process. If you log out and log back in, it will also be cancelled automatically.</p>
+
+                                    <button
+                                        onClick={async () => {
+                                            if (!confirm("Are you sure you want to cancel the account deletion?")) return;
+                                            try {
+                                                await axios.post(`${AUTH_URL}/auth/cancel-deletion`, {}, { headers: { Authorization: `Bearer ${token}` } });
+                                                if (user) setUser({ ...user, deletionScheduledAt: undefined });
+                                                alert("Deletion cancelled successfully!");
+                                            } catch (err) {
+                                                alert("Failed to cancel deletion.");
+                                            }
+                                        }}
+                                        className="bg-white text-black hover:bg-slate-200 px-6 py-2.5 rounded-xl text-sm font-bold transition-all"
+                                    >
+                                        Cancel Deletion
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    <p className="text-sm text-slate-300">
+                                        If you schedule your account for deletion, you will enter a 30-day grace period. During this time, your services will remain active. If you do not log in or cancel the request within 30 days, your account, projects, and deployed artifacts will be permanently removed.
+                                    </p>
+                                    <button
+                                        onClick={async () => {
+                                            if (!confirm("Are you absolutely sure you want to schedule your account for deletion?")) return;
+                                            try {
+                                                await axios.post(`${AUTH_URL}/auth/schedule-deletion`, {}, { headers: { Authorization: `Bearer ${token}` } });
+
+                                                // Approximating date for immediate UI feedback
+                                                const d = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+                                                if (user) setUser({ ...user, deletionScheduledAt: d });
+                                                alert("Account scheduled for deletion.");
+                                            } catch (err) {
+                                                alert("Failed to schedule deletion.");
+                                            }
+                                        }}
+                                        className="bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white border border-red-500/30 px-6 py-2.5 rounded-xl text-sm font-bold transition-all"
+                                    >
+                                        Schedule Account Deletion
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
 

@@ -8,6 +8,7 @@ export interface AuthUser {
     name: string;
     email: string;
     avatar?: string;
+    deletionScheduledAt?: string;
 }
 
 interface AuthContextValue {
@@ -18,6 +19,7 @@ interface AuthContextValue {
     register: (name: string, email: string, password: string) => Promise<void>;
     googleAuth: (idToken: string) => Promise<void>;
     logout: () => void;
+    setUser: (user: AuthUser | null) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -74,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     return (
-        <AuthContext.Provider value={{ user, token, loading, login, register, googleAuth, logout }}>
+        <AuthContext.Provider value={{ user, token, loading, login, register, googleAuth, logout, setUser }}>
             {children}
         </AuthContext.Provider>
     );
