@@ -8,6 +8,8 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import Dashboard from "./pages/Dashboard";
+import Settings from "./pages/Settings";
 import "./App.css";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? "";
@@ -25,7 +27,21 @@ function AuthRoute({ children }: { children: React.ReactNode }) {
     );
   }
 
-  return user ? <Navigate to="/" replace /> : <>{children}</>;
+  return user ? <Navigate to="/dashboard" replace /> : <>{children}</>;
+}
+
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#06060c] flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full border-2 border-indigo-500/20 border-t-indigo-500 animate-spin" />
+      </div>
+    );
+  }
+
+  return !user ? <Navigate to="/" replace /> : <>{children}</>;
 }
 
 function AppRoutes() {
@@ -36,11 +52,16 @@ function AppRoutes() {
       <Route path="/signup" element={<AuthRoute><Signup /></AuthRoute>} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+
       {/* New Features page */}
       <Route path="/features" element={<Features />} />
 
-      {/* Public: deploy dashboard */}
-      <Route path="/" element={<Landing />} />
+      {/* Protected routes */}
+      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+      <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+
+      {/* Public: deploy landing page */}
+      <Route path="/" element={<AuthRoute><Landing /></AuthRoute>} />
 
       {/* Catch-all */}
       <Route path="*" element={<Navigate to="/" replace />} />
