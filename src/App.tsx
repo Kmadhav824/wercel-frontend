@@ -4,6 +4,7 @@ import { GoogleOAuthProvider } from "@react-oauth/google";
 import { AuthProvider } from "./contexts/AuthContext";
 import { Landing } from "./components/landing";
 import Features from "./components/Features";
+import Infrastructure from "./components/Infrastructure";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -53,8 +54,9 @@ function AppRoutes() {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
 
-      {/* New Features page */}
+      {/* New pages */}
       <Route path="/features" element={<Features />} />
+      <Route path="/infrastructure" element={<Infrastructure />} />
 
       {/* Protected routes */}
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
