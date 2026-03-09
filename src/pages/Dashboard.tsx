@@ -61,7 +61,7 @@ export default function Dashboard() {
 
     const loadProjects = async () => {
         try {
-            const res = await axios.get(`${AUTH_URL}/projects`, {
+            const res = await axios.get(`${AUTH_URL}/auth/projects`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setProjects(res.data.projects || []);
@@ -92,7 +92,7 @@ export default function Dashboard() {
                 setSelectedProjectId(projectId);
                 setActiveTab("deployments");
             }
-            const res = await axios.get(`${AUTH_URL}/projects/${projectId}/deployments`, {
+            const res = await axios.get(`${AUTH_URL}/auth/projects/${projectId}/deployments`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setDeployments(res.data.deployments || []);
@@ -105,7 +105,7 @@ export default function Dashboard() {
     const handleDeployGithub = async (repo: any) => {
         setDeployingRepo(repo.id);
         try {
-            const res = await axios.post(`${AUTH_URL}/projects`, {
+            const res = await axios.post(`${AUTH_URL}/auth/projects`, {
                 name: repo.name,
                 repoUrl: repo.clone_url || repo.url
             }, {
@@ -126,7 +126,7 @@ export default function Dashboard() {
         if (!selectedProjectId) return;
         setRollingBack(deploymentId);
         try {
-            await axios.post(`${AUTH_URL}/projects/${selectedProjectId}/rollback`, {
+            await axios.post(`${AUTH_URL}/auth/projects/${selectedProjectId}/rollback`, {
                 uploadId: uploadId
             }, {
                 headers: { Authorization: `Bearer ${token}` }
