@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { Rocket, Github, Server, CheckCircle2, Loader2, ArrowRight, Settings as SettingsIcon, LogOut, Clock, RotateCcw } from "lucide-react";
+import { Rocket, Github, Server, CheckCircle2, Loader2, ArrowRight, Settings as SettingsIcon, LogOut, Clock, RotateCcw, Trash2, Search } from "lucide-react";
 
 const BACKEND_UPLOAD_URL = import.meta.env.VITE_BACKEND_UPLOAD_URL || "http://localhost:3000";
 const AUTH_URL = import.meta.env.VITE_AUTH_URL || "http://localhost:4000";
@@ -38,6 +38,8 @@ export default function Dashboard() {
     const [activeTab, setActiveTab] = useState<"projects" | "deployments" | "github">("projects");
     const [deployments, setDeployments] = useState<any[]>([]);
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+    const [searchProject, setSearchProject] = useState("");
+    const [searchRepo, setSearchRepo] = useState("");
 
     useEffect(() => {
         if (token) {
@@ -49,26 +51,50 @@ export default function Dashboard() {
     useEffect(() => {
         let interval: NodeJS.Timeout;
         if (activeTab === "deployments" && selectedProjectId) {
-            const hasBuilding = deployments.some(d => d.status === "queued" || d.status === "building");
+            const hasBuilding = deployments.some(d => ["queued", "cloning", "building", "deploying"].includes(d.status));
             if (hasBuilding) {
                 interval = setInterval(() => {
                     loadDeployments(selectedProjectId, true); // silent refresh
                 }, 3000);
             }
+        } else if (activeTab === "projects") {
+            const hasBuildingProject = projects.some(p => ["queued", "cloning", "building", "deploying"].includes(p.status));
+            if (hasBuildingProject) {
+                interval = setInterval(() => {
+                    loadProjects(true); // silent refresh
+                }, 3000);
+            }
         }
         return () => clearInterval(interval);
-    }, [activeTab, selectedProjectId, deployments]);
+    }, [activeTab, selectedProjectId, deployments, projects]);
 
-    const loadProjects = async () => {
+    const loadProjects = async (silent = false) => {
         try {
             const res = await axios.get(`${AUTH_URL}/auth/projects`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setProjects(res.data.projects || []);
-            setLoading(false);
+            if (!silent) setLoading(false);
         } catch (err) {
             console.error(err);
-            setLoading(false);
+            if (!silent) setLoading(false);
+        }
+    };
+
+    const handleDeleteProject = async (projectId: string) => {
+        if (!window.confirm("Are you sure you want to delete this project? This will also remove all associated deployments and cannot be undone.")) return;
+
+        try {
+            await axios.delete(`${AUTH_URL}/auth/projects/${projectId}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setProjects(prev => prev.filter(p => p._id !== projectId));
+            if (selectedProjectId === projectId) {
+                setSelectedProjectId(null);
+                setActiveTab("projects");
+            }
+        } catch (err) {
+            alert("Failed to delete project");
         }
     };
 
@@ -212,11 +238,23 @@ export default function Dashboard() {
                                 {/* Projects Tab */}
                                 {activeTab === "projects" && (
                                     <>
-                                        <div className="flex items-center justify-between mb-6">
-                                            <h2 className="text-2xl font-bold text-white tracking-tight">Your Projects</h2>
-                                            <button onClick={() => setActiveTab("github")} className="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-[0_0_15px_rgba(99,102,241,0.3)] hover:shadow-[0_0_20px_rgba(99,102,241,0.5)]">
-                                                Add New
-                                            </button>
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                                            <h2 className="text-2xl font-bold text-white tracking-tight shrink-0">Your Projects</h2>
+                                            <div className="flex w-full sm:w-auto items-center gap-4">
+                                                <div className="relative w-full sm:w-64">
+                                                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Search projects..."
+                                                        value={searchProject}
+                                                        onChange={(e) => setSearchProject(e.target.value)}
+                                                        className="w-full bg-[#0a0a16] border border-white/10 text-white rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all placeholder:text-slate-600"
+                                                    />
+                                                </div>
+                                                <button onClick={() => setActiveTab("github")} className="shrink-0 bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-[0_0_15px_rgba(99,102,241,0.3)] hover:shadow-[0_0_20px_rgba(99,102,241,0.5)]">
+                                                    Add New
+                                                </button>
+                                            </div>
                                         </div>
 
                                         {projects.length === 0 ? (
@@ -232,25 +270,36 @@ export default function Dashboard() {
                                             </div>
                                         ) : (
                                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                                {projects.map(p => (
+                                                {projects.filter(p => p.name.toLowerCase().includes(searchProject.toLowerCase())).map(p => (
                                                     <div key={p._id} className="bg-[#0a0a16]/80 backdrop-blur-xl border border-white/10 rounded-2xl p-6 hover:border-indigo-500/50 transition-all group shadow-lg">
                                                         <div className="flex justify-between items-start mb-4">
-                                                            <h3 className="text-xl font-bold text-white truncate pr-4">{p.name}</h3>
-                                                            {p.status === "deployed" ? (
-                                                                <span className="shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold uppercase tracking-wide">
-                                                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                                                                    Ready
-                                                                </span>
-                                                            ) : p.status === "failed" ? (
-                                                                <span className="shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold uppercase tracking-wide">
-                                                                    Failed
-                                                                </span>
-                                                            ) : (
-                                                                <span className="shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-bold uppercase tracking-wide">
-                                                                    <Loader2 className="w-3 h-3 animate-spin" />
-                                                                    Building
-                                                                </span>
-                                                            )}
+                                                            <div className="min-w-0 pr-4">
+                                                                <h3 className="text-xl font-bold text-white truncate">{p.name}</h3>
+                                                            </div>
+                                                            <div className="flex items-center gap-3 shrink-0">
+                                                                {p.status === "deployed" ? (
+                                                                    <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold uppercase tracking-wide">
+                                                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                                                                        Ready
+                                                                    </span>
+                                                                ) : p.status === "failed" ? (
+                                                                    <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold uppercase tracking-wide">
+                                                                        Failed
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-bold uppercase tracking-wide">
+                                                                        <Loader2 className="w-3 h-3 animate-spin" />
+                                                                        {p.status === "cloning" ? "Cloning" : p.status === "building" ? "Building" : p.status === "deploying" ? "Deploying" : "Queued"}
+                                                                    </span>
+                                                                )}
+                                                                <button
+                                                                    onClick={() => handleDeleteProject(p._id)}
+                                                                    className="text-slate-500 hover:text-red-400 transition-colors p-1 rounded-md hover:bg-red-500/10"
+                                                                    title="Delete Project"
+                                                                >
+                                                                    <Trash2 className="w-4 h-4" />
+                                                                </button>
+                                                            </div>
                                                         </div>
 
                                                         <div className="space-y-3 mb-6">
@@ -347,7 +396,7 @@ export default function Dashboard() {
                                                                         ) : d.status === "failed" ? (
                                                                             <span className="text-red-400 flex items-center gap-1.5">Failed</span>
                                                                         ) : (
-                                                                            <span className="text-amber-400 flex items-center gap-1.5"><Loader2 className="w-4 h-4 animate-spin" /> Building</span>
+                                                                            <span className="text-amber-400 flex items-center gap-1.5"><Loader2 className="w-4 h-4 animate-spin" /> {d.status.charAt(0).toUpperCase() + d.status.slice(1)}</span>
                                                                         )}
                                                                     </div>
 
@@ -411,9 +460,21 @@ export default function Dashboard() {
                                             </div>
                                         ) : (
                                             <div className="space-y-4">
-                                                <div className="flex justify-between items-end mb-4">
+                                                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-4">
                                                     <p className="text-slate-400">Select a repository to deploy.</p>
-                                                    <button onClick={checkGithub} className="text-xs text-indigo-400 hover:text-indigo-300 font-medium tracking-wide uppercase">Refresh list</button>
+                                                    <div className="flex items-center gap-4 w-full sm:w-auto">
+                                                        <div className="relative flex-1 sm:w-64">
+                                                            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                                                            <input
+                                                                type="text"
+                                                                placeholder="Search repositories..."
+                                                                value={searchRepo}
+                                                                onChange={(e) => setSearchRepo(e.target.value)}
+                                                                className="w-full bg-[#0a0a16] border border-white/10 text-white rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all placeholder:text-slate-600"
+                                                            />
+                                                        </div>
+                                                        <button onClick={checkGithub} className="shrink-0 text-xs text-indigo-400 hover:text-indigo-300 font-medium tracking-wide uppercase">Refresh list</button>
+                                                    </div>
                                                 </div>
 
                                                 {repos.length === 0 ? (
@@ -422,7 +483,7 @@ export default function Dashboard() {
                                                     </div>
                                                 ) : (
                                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                                        {repos.map(repo => (
+                                                        {repos.filter(r => r.name.toLowerCase().includes(searchRepo.toLowerCase())).map(repo => (
                                                             <div key={repo.id} className="bg-[#0a0a16] border border-white/10 rounded-xl p-5 hover:border-indigo-500/40 hover:bg-white/[0.02] transition-all group shadow-md hover:shadow-xl">
                                                                 <div className="flex items-start justify-between mb-3">
                                                                     <div className="flex items-center gap-2 text-white font-semibold truncate pr-2">
