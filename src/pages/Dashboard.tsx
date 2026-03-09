@@ -74,7 +74,7 @@ export default function Dashboard() {
 
     const checkGithub = async () => {
         try {
-            const res = await axios.get(`${AUTH_URL}/user/github/repos`, {
+            const res = await axios.get(`${AUTH_URL}/auth/github/repos`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setRepos(res.data.repos || []);

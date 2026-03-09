@@ -16,8 +16,7 @@ export default function Settings() {
 
     useEffect(() => {
         if (token) {
-            // Check if already linked
-            axios.get(`${AUTH_URL}/user/github/repos`, {
+            axios.get(`${AUTH_URL}/auth/github/repos`, {
                 headers: { Authorization: `Bearer ${token}` }
             }).then(() => {
                 setHasToken(true);
@@ -35,7 +34,7 @@ export default function Settings() {
         setSaved(false);
 
         try {
-            await axios.put(`${AUTH_URL}/user/github/link`, {
+            await axios.put(`${AUTH_URL}/auth/github/link`, {
                 token: githubToken
             }, {
                 headers: { Authorization: `Bearer ${token}` }
@@ -47,7 +46,11 @@ export default function Settings() {
 
             setTimeout(() => setSaved(false), 3000);
         } catch (err: any) {
-            alert(err.response?.data?.error || "Error linking GitHub token");
+            if (err.response?.status === 404) {
+                alert("Backend endpoint not found. Please ensure you have deployed the latest backend code containing the /auth/github routes.");
+            } else {
+                alert(err.response?.data?.error || "Error linking GitHub token");
+            }
         } finally {
             setSaving(false);
         }
