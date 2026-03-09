@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import toast from "react-hot-toast";
 import axios from "axios";
 import { Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
@@ -47,9 +48,9 @@ export default function Settings() {
             setTimeout(() => setSaved(false), 3000);
         } catch (err: any) {
             if (err.response?.status === 404) {
-                alert("Backend endpoint not found. Please ensure you have deployed the latest backend code containing the /auth/github routes.");
+                toast.error("Backend endpoint not found.");
             } else {
-                alert(err.response?.data?.error || "Error linking GitHub token");
+                toast.error(err.response?.data?.error || "Error linking GitHub token");
             }
         } finally {
             setSaving(false);
@@ -183,15 +184,25 @@ export default function Settings() {
                                     <p className="text-sm text-slate-400">Changed your mind? You can cancel the deletion process. If you log out and log back in, it will also be cancelled automatically.</p>
 
                                     <button
-                                        onClick={async () => {
-                                            if (!confirm("Are you sure you want to cancel the account deletion?")) return;
-                                            try {
-                                                await axios.post(`${AUTH_URL}/auth/cancel-deletion`, {}, { headers: { Authorization: `Bearer ${token}` } });
-                                                if (user) setUser({ ...user, deletionScheduledAt: undefined });
-                                                alert("Deletion cancelled successfully!");
-                                            } catch (err) {
-                                                alert("Failed to cancel deletion.");
-                                            }
+                                        onClick={() => {
+                                            toast((t) => (
+                                                <div className="flex flex-col gap-3">
+                                                    <p className="text-sm font-medium text-white">Cancel account deletion?</p>
+                                                    <div className="flex gap-2 justify-end">
+                                                        <button onClick={() => toast.dismiss(t.id)} className="px-3 py-1.5 text-xs text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg">No</button>
+                                                        <button onClick={async () => {
+                                                            toast.dismiss(t.id);
+                                                            try {
+                                                                await axios.post(`${AUTH_URL}/auth/cancel-deletion`, {}, { headers: { Authorization: `Bearer ${token}` } });
+                                                                if (user) setUser({ ...user, deletionScheduledAt: undefined });
+                                                                toast.success("Deletion cancelled successfully!");
+                                                            } catch (err) {
+                                                                toast.error("Failed to cancel deletion.");
+                                                            }
+                                                        }} className="px-3 py-1.5 text-xs text-white bg-indigo-500 hover:bg-indigo-600 rounded-lg">Yes, Cancel</button>
+                                                    </div>
+                                                </div>
+                                            ), { duration: Infinity, style: { background: '#1a1a24', border: '1px solid rgba(255,255,255,0.1)' } });
                                         }}
                                         className="bg-white text-black hover:bg-slate-200 px-6 py-2.5 rounded-xl text-sm font-bold transition-all"
                                     >
@@ -204,18 +215,26 @@ export default function Settings() {
                                         If you schedule your account for deletion, you will enter a 30-day grace period. During this time, your services will remain active. If you do not log in or cancel the request within 30 days, your account, projects, and deployed artifacts will be permanently removed.
                                     </p>
                                     <button
-                                        onClick={async () => {
-                                            if (!confirm("Are you absolutely sure you want to schedule your account for deletion?")) return;
-                                            try {
-                                                await axios.post(`${AUTH_URL}/auth/schedule-deletion`, {}, { headers: { Authorization: `Bearer ${token}` } });
-
-                                                // Approximating date for immediate UI feedback
-                                                const d = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-                                                if (user) setUser({ ...user, deletionScheduledAt: d });
-                                                alert("Account scheduled for deletion.");
-                                            } catch (err) {
-                                                alert("Failed to schedule deletion.");
-                                            }
+                                        onClick={() => {
+                                            toast((t) => (
+                                                <div className="flex flex-col gap-3">
+                                                    <p className="text-sm font-medium text-white">Schedule account for deletion?</p>
+                                                    <div className="flex gap-2 justify-end">
+                                                        <button onClick={() => toast.dismiss(t.id)} className="px-3 py-1.5 text-xs text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg">Cancel</button>
+                                                        <button onClick={async () => {
+                                                            toast.dismiss(t.id);
+                                                            try {
+                                                                await axios.post(`${AUTH_URL}/auth/schedule-deletion`, {}, { headers: { Authorization: `Bearer ${token}` } });
+                                                                const d = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+                                                                if (user) setUser({ ...user, deletionScheduledAt: d });
+                                                                toast.success("Account scheduled for deletion.");
+                                                            } catch (err) {
+                                                                toast.error("Failed to schedule deletion.");
+                                                            }
+                                                        }} className="px-3 py-1.5 text-xs text-white bg-red-500 hover:bg-red-600 rounded-lg">Schedule Deletion</button>
+                                                    </div>
+                                                </div>
+                                            ), { duration: Infinity, style: { background: '#1a1a24', border: '1px solid rgba(239, 68, 68, 0.3)' } });
                                         }}
                                         className="bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white border border-red-500/30 px-6 py-2.5 rounded-xl text-sm font-bold transition-all"
                                     >

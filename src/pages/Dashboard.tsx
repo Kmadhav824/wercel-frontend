@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
+import toast from "react-hot-toast";
 import axios from "axios";
 import { Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { Rocket, Github, Server, CheckCircle2, Loader2, ArrowRight, Settings as SettingsIcon, LogOut, Clock, RotateCcw, Trash2, Search } from "lucide-react";
+import EnvVarsModal from "../components/EnvVarsModal";
+import { Rocket, Github, Server, CheckCircle2, Loader2, ArrowRight, Settings as SettingsIcon, LogOut, Clock, RotateCcw, Trash2, Search, Sliders } from "lucide-react";
 
 const BACKEND_UPLOAD_URL = import.meta.env.VITE_BACKEND_UPLOAD_URL || "http://localhost:3000";
 const AUTH_URL = import.meta.env.VITE_AUTH_URL || "http://localhost:4000";
@@ -12,8 +14,15 @@ let requestHandlerHostname = "localhost";
 let requestHandlerPort = ":3001";
 try {
     if (REQUEST_HANDLER_DOMAIN) {
-        requestHandlerHostname = REQUEST_HANDLER_DOMAIN;
-        requestHandlerPort = "";
+        // If it includes a port (e.g. localhost:3001), split it
+        if (REQUEST_HANDLER_DOMAIN.includes(":")) {
+            const parts = REQUEST_HANDLER_DOMAIN.split(":");
+            requestHandlerHostname = parts[0];
+            requestHandlerPort = `:${parts[1]}`;
+        } else {
+            requestHandlerHostname = REQUEST_HANDLER_DOMAIN;
+            requestHandlerPort = "";
+        }
     } else {
         const url = new URL(BACKEND_UPLOAD_URL);
         requestHandlerHostname = url.hostname;
@@ -40,6 +49,7 @@ export default function Dashboard() {
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
     const [searchProject, setSearchProject] = useState("");
     const [searchRepo, setSearchRepo] = useState("");
+    const [envVarsModalProject, setEnvVarsModalProject] = useState<any | null>(null);
 
     useEffect(() => {
         if (token) {
@@ -82,20 +92,30 @@ export default function Dashboard() {
     };
 
     const handleDeleteProject = async (projectId: string) => {
-        if (!window.confirm("Are you sure you want to delete this project? This will also remove all associated deployments and cannot be undone.")) return;
-
-        try {
-            await axios.delete(`${AUTH_URL}/auth/projects/${projectId}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setProjects(prev => prev.filter(p => p._id !== projectId));
-            if (selectedProjectId === projectId) {
-                setSelectedProjectId(null);
-                setActiveTab("projects");
-            }
-        } catch (err) {
-            alert("Failed to delete project");
-        }
+        toast((t) => (
+            <div className="flex flex-col gap-3">
+                <p className="text-sm font-medium text-white">Are you sure you want to delete this project? This cannot be undone.</p>
+                <div className="flex gap-2 justify-end">
+                    <button onClick={() => toast.dismiss(t.id)} className="px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-colors">Cancel</button>
+                    <button onClick={async () => {
+                        toast.dismiss(t.id);
+                        try {
+                            await axios.delete(`${AUTH_URL}/auth/projects/${projectId}`, {
+                                headers: { Authorization: `Bearer ${token}` }
+                            });
+                            setProjects(prev => prev.filter(p => p._id !== projectId));
+                            if (selectedProjectId === projectId) {
+                                setSelectedProjectId(null);
+                                setActiveTab("projects");
+                            }
+                            toast.success("Project deleted successfully");
+                        } catch (err) {
+                            toast.error("Failed to delete project");
+                        }
+                    }} className="px-3 py-1.5 text-xs font-medium text-white bg-red-500/80 hover:bg-red-500 rounded-lg transition-colors">Delete Project</button>
+                </div>
+            </div>
+        ), { duration: Infinity, style: { background: '#1a1a24', border: '1px solid rgba(239, 68, 68, 0.3)' } });
     };
 
     const checkGithub = async () => {
@@ -142,7 +162,7 @@ export default function Dashboard() {
             await loadProjects();
             loadDeployments(res.data.project._id);
         } catch (err) {
-            alert("Error deploying repository");
+            toast.error("Error deploying repository");
         } finally {
             setDeployingRepo(null);
         }
@@ -158,10 +178,10 @@ export default function Dashboard() {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
-            alert("Rollback successful! The selected deployment is now active.");
+            toast.success("Rollback successful!");
             loadProjects();
         } catch (err) {
-            alert("Failed to rollback");
+            toast.error("Failed to rollback");
         } finally {
             setRollingBack(null);
         }
@@ -229,8 +249,32 @@ export default function Dashboard() {
                     {/* Main Content */}
                     <div className="flex-1">
                         {loading ? (
-                            <div className="flex items-center justify-center h-64">
-                                <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+                            <div className="space-y-6">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                                    <div className="h-8 w-40 bg-white/5 rounded-lg animate-pulse"></div>
+                                    <div className="flex w-full sm:w-auto items-center gap-4">
+                                        <div className="h-10 w-full sm:w-64 bg-white/5 rounded-lg animate-pulse"></div>
+                                        <div className="h-10 w-24 bg-white/5 rounded-lg animate-pulse"></div>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                    {[1, 2, 3, 4].map(i => (
+                                        <div key={i} className="bg-[#0a0a16]/80 border border-white/5 rounded-2xl p-6 h-[200px] flex flex-col justify-between">
+                                            <div className="flex justify-between items-start">
+                                                <div className="h-6 w-1/2 bg-white/5 rounded-md animate-pulse"></div>
+                                                <div className="h-6 w-20 bg-white/5 rounded-full animate-pulse"></div>
+                                            </div>
+                                            <div className="space-y-3 mt-4">
+                                                <div className="h-8 w-full bg-white/5 rounded-lg animate-pulse"></div>
+                                                <div className="h-4 w-2/3 bg-white/5 rounded-lg animate-pulse"></div>
+                                            </div>
+                                            <div className="flex gap-2 mt-6">
+                                                <div className="h-10 flex-1 bg-white/5 rounded-xl animate-pulse"></div>
+                                                <div className="h-10 w-24 bg-white/5 rounded-xl animate-pulse"></div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         ) : (
                             <div className="space-y-6">
@@ -325,10 +369,17 @@ export default function Dashboard() {
 
                                                         <div className="flex gap-2">
                                                             <button
+                                                                onClick={() => setEnvVarsModalProject(p)}
+                                                                className="flex items-center justify-center p-2 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white rounded-xl transition-all border border-white/10"
+                                                                title="Environment Variables"
+                                                            >
+                                                                <Sliders className="w-5 h-5" />
+                                                            </button>
+                                                            <button
                                                                 onClick={() => loadDeployments(p._id)}
                                                                 className="flex-1 bg-white/5 hover:bg-white/10 text-white px-4 py-2 rounded-xl text-sm font-medium transition-all border border-white/10 text-center"
                                                             >
-                                                                Manage Deployments
+                                                                Deployments
                                                             </button>
                                                             {p.status === "deployed" ? (
                                                                 <a
@@ -521,6 +572,10 @@ export default function Dashboard() {
                     </div>
                 </div>
             </main>
+
+            {envVarsModalProject && (
+                <EnvVarsModal project={envVarsModalProject} onClose={() => setEnvVarsModalProject(null)} />
+            )}
         </div>
     );
 }
