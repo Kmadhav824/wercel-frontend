@@ -4,7 +4,8 @@ import axios from "axios";
 import { Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import EnvVarsModal from "../components/EnvVarsModal";
-import { Rocket, Github, Server, CheckCircle2, Loader2, ArrowRight, Settings as SettingsIcon, LogOut, Clock, RotateCcw, Trash2, Search, Sliders } from "lucide-react";
+import BuildSettingsModal from "../components/BuildSettingsModal";
+import { Rocket, Github, Server, CheckCircle2, Loader2, ArrowRight, Settings as SettingsIcon, LogOut, Clock, RotateCcw, Trash2, Search, Sliders, Wrench } from "lucide-react";
 
 const BACKEND_UPLOAD_URL = import.meta.env.VITE_BACKEND_UPLOAD_URL || "http://localhost:3000";
 const AUTH_URL = import.meta.env.VITE_AUTH_URL || "http://localhost:4000";
@@ -50,6 +51,7 @@ export default function Dashboard() {
     const [searchProject, setSearchProject] = useState("");
     const [searchRepo, setSearchRepo] = useState("");
     const [envVarsModalProject, setEnvVarsModalProject] = useState<any | null>(null);
+    const [buildSettingsModalProject, setBuildSettingsModalProject] = useState<any | null>(null);
 
     useEffect(() => {
         if (token) {
@@ -153,7 +155,7 @@ export default function Dashboard() {
         try {
             const res = await axios.post(`${AUTH_URL}/auth/projects`, {
                 name: repo.name,
-                repoUrl: repo.clone_url || repo.url
+                repoUrl: repo.cloneUrl || repo.url
             }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -161,8 +163,9 @@ export default function Dashboard() {
             // Redirect to deployments tab instantly to see progress
             await loadProjects();
             loadDeployments(res.data.project._id);
-        } catch (err) {
-            toast.error("Error deploying repository");
+        } catch (err: any) {
+            const message = err?.response?.data?.error || "Error deploying repository";
+            toast.error(message);
         } finally {
             setDeployingRepo(null);
         }
@@ -365,9 +368,20 @@ export default function Dashboard() {
                                                                 <Github className="w-3.5 h-3.5" />
                                                                 <span className="truncate">{p.repoUrl}</span>
                                                             </div>
+                                                            <div className="flex items-center gap-2 text-xs text-slate-500">
+                                                                <Wrench className="w-3.5 h-3.5" />
+                                                                <span className="capitalize">{p.framework || "unknown"}</span>
+                                                            </div>
                                                         </div>
 
                                                         <div className="flex gap-2">
+                                                            <button
+                                                                onClick={() => setBuildSettingsModalProject(p)}
+                                                                className="flex items-center justify-center p-2 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white rounded-xl transition-all border border-white/10"
+                                                                title="Build Settings"
+                                                            >
+                                                                <Wrench className="w-5 h-5" />
+                                                            </button>
                                                             <button
                                                                 onClick={() => setEnvVarsModalProject(p)}
                                                                 className="flex items-center justify-center p-2 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white rounded-xl transition-all border border-white/10"
@@ -575,6 +589,14 @@ export default function Dashboard() {
 
             {envVarsModalProject && (
                 <EnvVarsModal project={envVarsModalProject} onClose={() => setEnvVarsModalProject(null)} />
+            )}
+
+            {buildSettingsModalProject && (
+                <BuildSettingsModal
+                    project={buildSettingsModalProject}
+                    onClose={() => setBuildSettingsModalProject(null)}
+                    onSaved={loadProjects}
+                />
             )}
         </div>
     );
