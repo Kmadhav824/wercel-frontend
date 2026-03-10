@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 import axios from "axios";
 import { Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import EnvVarsModal from "../components/EnvVarsModal";
 import BuildSettingsModal from "../components/BuildSettingsModal";
-import { Rocket, Github, Server, CheckCircle2, Loader2, ArrowRight, Settings as SettingsIcon, LogOut, Clock, RotateCcw, Trash2, Search, Sliders, Wrench } from "lucide-react";
+import { Rocket, Github, Server, CheckCircle2, Loader2, ArrowRight, Settings as SettingsIcon, LogOut, Clock, RotateCcw, Trash2, Search, Sliders, Wrench, Terminal, X } from "lucide-react";
 
 const BACKEND_UPLOAD_URL = import.meta.env.VITE_BACKEND_UPLOAD_URL || "http://localhost:3000";
 const AUTH_URL = import.meta.env.VITE_AUTH_URL || "http://localhost:4000";
@@ -52,6 +52,13 @@ export default function Dashboard() {
     const [searchRepo, setSearchRepo] = useState("");
     const [envVarsModalProject, setEnvVarsModalProject] = useState<any | null>(null);
     const [buildSettingsModalProject, setBuildSettingsModalProject] = useState<any | null>(null);
+    const [logsDeployment, setLogsDeployment] = useState<any | null>(null);
+    const [liveLogs, setLiveLogs] = useState<string[]>([]);
+    const [logsStatus, setLogsStatus] = useState<"idle" | "connecting" | "streaming" | "ended" | "error">("idle");
+    const [streamedDeploymentStatus, setStreamedDeploymentStatus] = useState<string>("unknown");
+    const [logsError, setLogsError] = useState<string | null>(null);
+    const logStreamAbortRef = useRef<AbortController | null>(null);
+    const logsViewportRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
         if (token) {
@@ -79,6 +86,18 @@ export default function Dashboard() {
         }
         return () => clearInterval(interval);
     }, [activeTab, selectedProjectId, deployments, projects]);
+
+    useEffect(() => {
+        return () => {
+            logStreamAbortRef.current?.abort();
+        };
+    }, []);
+
+    useEffect(() => {
+        if (logsViewportRef.current) {
+            logsViewportRef.current.scrollTop = logsViewportRef.current.scrollHeight;
+        }
+    }, [liveLogs]);
 
     const loadProjects = async (silent = false) => {
         try {
@@ -187,6 +206,106 @@ export default function Dashboard() {
             toast.error("Failed to rollback");
         } finally {
             setRollingBack(null);
+        }
+    };
+
+    const closeLogsViewer = () => {
+        logStreamAbortRef.current?.abort();
+        logStreamAbortRef.current = null;
+        setLogsDeployment(null);
+        setLogsStatus("idle");
+    };
+
+    const streamDeploymentLogs = async (deployment: any) => {
+        if (!selectedProjectId || !token) return;
+
+        logStreamAbortRef.current?.abort();
+        const controller = new AbortController();
+        logStreamAbortRef.current = controller;
+
+        setLogsDeployment(deployment);
+        setLiveLogs([]);
+        setLogsError(null);
+        setLogsStatus("connecting");
+        setStreamedDeploymentStatus(deployment.status || "unknown");
+
+        try {
+            const res = await fetch(`${AUTH_URL}/auth/projects/${selectedProjectId}/deployments/${deployment.uploadId}/logs/stream`, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+                signal: controller.signal,
+            });
+
+            if (!res.ok || !res.body) {
+                throw new Error("Failed to connect to live logs stream");
+            }
+
+            const decoder = new TextDecoder();
+            const reader = res.body.getReader();
+            let buffer = "";
+
+            const consumeEvent = (eventBlock: string) => {
+                const lines = eventBlock.split("\n");
+                let eventType = "message";
+                const dataLines: string[] = [];
+
+                for (const line of lines) {
+                    if (line.startsWith("event:")) {
+                        eventType = line.slice(6).trim();
+                    }
+                    if (line.startsWith("data:")) {
+                        dataLines.push(line.slice(5).trim());
+                    }
+                }
+
+                if (dataLines.length === 0) return;
+
+                let payload: any;
+                try {
+                    payload = JSON.parse(dataLines.join("\n"));
+                } catch {
+                    return;
+                }
+
+                setLogsStatus("streaming");
+
+                if (eventType === "log" && payload?.line) {
+                    setLiveLogs(prev => [...prev, payload.line].slice(-1000));
+                }
+
+                if (eventType === "status" && payload?.status) {
+                    setStreamedDeploymentStatus(payload.status);
+                }
+
+                if (eventType === "error") {
+                    setLogsError(payload?.message || "Stream error");
+                    setLogsStatus("error");
+                }
+            };
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                let boundaryIndex = buffer.indexOf("\n\n");
+                while (boundaryIndex !== -1) {
+                    const eventBlock = buffer.slice(0, boundaryIndex);
+                    consumeEvent(eventBlock);
+                    buffer = buffer.slice(boundaryIndex + 2);
+                    boundaryIndex = buffer.indexOf("\n\n");
+                }
+            }
+
+            if (!controller.signal.aborted) {
+                setLogsStatus(prev => (prev === "error" ? prev : "ended"));
+            }
+        } catch (err: any) {
+            if (!controller.signal.aborted) {
+                setLogsError(err?.message || "Unable to stream deployment logs");
+                setLogsStatus("error");
+            }
         }
     };
 
@@ -478,6 +597,14 @@ export default function Dashboard() {
                                                                         </button>
                                                                     )}
 
+                                                                    <button
+                                                                        onClick={() => streamDeploymentLogs(d)}
+                                                                        className="flex items-center gap-2 bg-white/5 hover:bg-white/10 text-slate-300 px-3 py-1.5 rounded-lg text-sm transition-all border border-white/10"
+                                                                    >
+                                                                        <Terminal className="w-4 h-4" />
+                                                                        Logs
+                                                                    </button>
+
                                                                     <a
                                                                         href={`http://${d.uploadId}.${requestHandlerHostname}${requestHandlerPort}`}
                                                                         target="_blank"
@@ -597,6 +724,62 @@ export default function Dashboard() {
                     onClose={() => setBuildSettingsModalProject(null)}
                     onSaved={loadProjects}
                 />
+            )}
+
+            {logsDeployment && (
+                <div className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="w-full max-w-5xl bg-[#05070f] border border-emerald-500/20 rounded-2xl shadow-2xl overflow-hidden">
+                        <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 bg-gradient-to-r from-emerald-900/20 via-black/40 to-black/30">
+                            <div className="flex items-center gap-3 min-w-0">
+                                <Terminal className="w-4 h-4 text-emerald-400 shrink-0" />
+                                <div className="min-w-0">
+                                    <p className="text-sm text-white font-semibold truncate">Live Build Logs</p>
+                                    <p className="text-xs text-slate-400 font-mono truncate">{logsDeployment.uploadId}</p>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                                <span className="text-xs px-2.5 py-1 rounded-md border border-emerald-500/20 bg-emerald-500/10 text-emerald-300 font-medium capitalize">
+                                    {streamedDeploymentStatus}
+                                </span>
+                                <button
+                                    onClick={closeLogsViewer}
+                                    className="text-slate-400 hover:text-white p-1.5 rounded-md hover:bg-white/10 transition-colors"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
+
+                        <div ref={logsViewportRef} className="h-[60vh] overflow-auto bg-[#03050a] px-4 py-3 font-mono text-xs leading-6 text-emerald-300">
+                            {liveLogs.length === 0 ? (
+                                <div className="text-slate-500">{logsStatus === "connecting" ? "Connecting to logs stream..." : "No logs yet."}</div>
+                            ) : (
+                                liveLogs.map((line, index) => (
+                                    <div key={`${index}-${line.slice(0, 16)}`} className="whitespace-pre-wrap break-words">{line}</div>
+                                ))
+                            )}
+                            {logsStatus === "streaming" && (
+                                <div className="text-emerald-500/70 animate-pulse">█</div>
+                            )}
+                        </div>
+
+                        <div className="px-5 py-3 border-t border-white/10 bg-black/30 flex items-center justify-between text-xs">
+                            <span className="text-slate-400">
+                                {logsStatus === "connecting" && "Connecting..."}
+                                {logsStatus === "streaming" && "Streaming live logs"}
+                                {logsStatus === "ended" && "Stream ended"}
+                                {logsStatus === "error" && (logsError || "Stream failed")}
+                            </span>
+                            <button
+                                onClick={() => streamDeploymentLogs(logsDeployment)}
+                                className="text-emerald-400 hover:text-emerald-300 font-medium"
+                            >
+                                Reconnect
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );
