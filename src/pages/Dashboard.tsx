@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import EnvVarsModal from "../components/EnvVarsModal";
 import BuildSettingsModal from "../components/BuildSettingsModal";
-import { Rocket, Github, Server, CheckCircle2, Loader2, ArrowRight, Settings as SettingsIcon, LogOut, Clock, RotateCcw, Trash2, Search, Sliders, Wrench, Terminal, X } from "lucide-react";
+import { Rocket, Github, Server, CheckCircle2, Loader2, ArrowRight, Settings as SettingsIcon, LogOut, Clock, RotateCcw, Trash2, Search, Sliders, Wrench, Terminal, X, Camera } from "lucide-react";
 
 const BACKEND_UPLOAD_URL = import.meta.env.VITE_BACKEND_UPLOAD_URL || "http://localhost:3000";
 const AUTH_URL = import.meta.env.VITE_AUTH_URL || "http://localhost:4000";
@@ -209,6 +209,15 @@ export default function Dashboard() {
         }
     };
 
+    const handleRefreshScreenshot = async (uploadId: string) => {
+        try {
+            await fetch(`${BACKEND_UPLOAD_URL}/screenshot/trigger?id=${uploadId}`, { method: "POST" });
+            toast.success("Screenshot refresh triggered — check back in ~15 seconds.");
+        } catch {
+            toast.error("Failed to trigger screenshot refresh");
+        }
+    };
+
     const closeLogsViewer = () => {
         logStreamAbortRef.current?.abort();
         logStreamAbortRef.current = null;
@@ -381,18 +390,15 @@ export default function Dashboard() {
                                 </div>
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                     {[1, 2, 3, 4].map(i => (
-                                        <div key={i} className="bg-[#0a0a16]/80 border border-white/5 rounded-2xl p-6 h-[200px] flex flex-col justify-between">
-                                            <div className="flex justify-between items-start">
-                                                <div className="h-6 w-1/2 bg-white/5 rounded-md animate-pulse"></div>
-                                                <div className="h-6 w-20 bg-white/5 rounded-full animate-pulse"></div>
-                                            </div>
-                                            <div className="space-y-3 mt-4">
+                                        <div key={i} className="bg-[#0a0a16]/80 border border-white/5 rounded-2xl overflow-hidden">
+                                            <div className="h-36 bg-white/5 animate-pulse" />
+                                            <div className="px-5 pb-5 pt-4 space-y-3">
                                                 <div className="h-8 w-full bg-white/5 rounded-lg animate-pulse"></div>
                                                 <div className="h-4 w-2/3 bg-white/5 rounded-lg animate-pulse"></div>
-                                            </div>
-                                            <div className="flex gap-2 mt-6">
-                                                <div className="h-10 flex-1 bg-white/5 rounded-xl animate-pulse"></div>
-                                                <div className="h-10 w-24 bg-white/5 rounded-xl animate-pulse"></div>
+                                                <div className="flex gap-2 pt-2">
+                                                    <div className="h-10 flex-1 bg-white/5 rounded-xl animate-pulse"></div>
+                                                    <div className="h-10 w-24 bg-white/5 rounded-xl animate-pulse"></div>
+                                                </div>
                                             </div>
                                         </div>
                                     ))}
@@ -437,38 +443,52 @@ export default function Dashboard() {
                                         ) : (
                                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                                 {projects.filter(p => p.name.toLowerCase().includes(searchProject.toLowerCase())).map(p => (
-                                                    <div key={p._id} className="bg-[#0a0a16]/80 backdrop-blur-xl border border-white/10 rounded-2xl p-6 hover:border-indigo-500/50 transition-all group shadow-lg">
-                                                        <div className="flex justify-between items-start mb-4">
-                                                            <div className="min-w-0 pr-4">
-                                                                <h3 className="text-xl font-bold text-white truncate">{p.name}</h3>
+                                                    <div key={p._id} className="bg-[#0a0a16]/80 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden hover:border-indigo-500/50 transition-all group shadow-lg">
+                                                        {/* ── Screenshot / Preview Thumbnail ── */}
+                                                        <div className="relative h-36 bg-gradient-to-br from-indigo-950/80 via-violet-950/60 to-slate-900">
+                                                            {p.activeDeploymentId && p.status === "deployed" && (
+                                                                <img
+                                                                    src={`${BACKEND_UPLOAD_URL}/screenshot/serve?id=${p.activeDeploymentId}`}
+                                                                    alt="Site preview"
+                                                                    className="absolute inset-0 w-full h-full object-cover object-top transition-opacity duration-700"
+                                                                    onError={(e) => { e.currentTarget.style.display = "none"; }}
+                                                                />
+                                                            )}
+                                                            {/* Gradient vignette for text readability */}
+                                                            <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a16] via-[#0a0a16]/20 to-transparent" />
+                                                            {/* Project name overlay */}
+                                                            <div className="absolute bottom-3 left-4 right-24 truncate">
+                                                                <h3 className="text-base font-bold text-white drop-shadow truncate">{p.name}</h3>
                                                             </div>
-                                                            <div className="flex items-center gap-3 shrink-0">
+                                                            {/* Status badge + delete overlaid at top-right */}
+                                                            <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5">
                                                                 {p.status === "deployed" ? (
-                                                                    <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold uppercase tracking-wide">
+                                                                    <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 text-[10px] font-bold uppercase tracking-wide backdrop-blur-sm">
                                                                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                                                                         Ready
                                                                     </span>
                                                                 ) : p.status === "failed" ? (
-                                                                    <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold uppercase tracking-wide">
+                                                                    <span className="px-2 py-0.5 rounded-full bg-red-500/25 border border-red-500/30 text-red-300 text-[10px] font-bold uppercase tracking-wide backdrop-blur-sm">
                                                                         Failed
                                                                     </span>
                                                                 ) : (
-                                                                    <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-bold uppercase tracking-wide">
-                                                                        <Loader2 className="w-3 h-3 animate-spin" />
+                                                                    <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/25 border border-amber-500/30 text-amber-300 text-[10px] font-bold uppercase tracking-wide backdrop-blur-sm">
+                                                                        <Loader2 className="w-2.5 h-2.5 animate-spin" />
                                                                         {p.status === "cloning" ? "Cloning" : p.status === "building" ? "Building" : p.status === "deploying" ? "Deploying" : "Queued"}
                                                                     </span>
                                                                 )}
                                                                 <button
                                                                     onClick={() => handleDeleteProject(p._id)}
-                                                                    className="text-slate-500 hover:text-red-400 transition-colors p-1 rounded-md hover:bg-red-500/10"
+                                                                    className="text-slate-400 hover:text-red-400 transition-colors p-1 rounded-md bg-black/40 backdrop-blur-sm hover:bg-red-500/20"
                                                                     title="Delete Project"
                                                                 >
-                                                                    <Trash2 className="w-4 h-4" />
+                                                                    <Trash2 className="w-3.5 h-3.5" />
                                                                 </button>
                                                             </div>
                                                         </div>
 
-                                                        <div className="space-y-3 mb-6">
+                                                        <div className="px-5 pb-5 pt-4">
+                                                        <div className="space-y-3 mb-5">
                                                             {p.status === "deployed" ? (
                                                                 <a
                                                                     href={`http://${p.activeDeploymentId}.${requestHandlerHostname}${requestHandlerPort}`}
@@ -508,6 +528,15 @@ export default function Dashboard() {
                                                             >
                                                                 <Sliders className="w-5 h-5" />
                                                             </button>
+                                                            {p.status === "deployed" && p.activeDeploymentId && (
+                                                                <button
+                                                                    onClick={() => handleRefreshScreenshot(p.activeDeploymentId)}
+                                                                    className="flex items-center justify-center p-2 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white rounded-xl transition-all border border-white/10"
+                                                                    title="Refresh Screenshot"
+                                                                >
+                                                                    <Camera className="w-5 h-5" />
+                                                                </button>
+                                                            )}
                                                             <button
                                                                 onClick={() => loadDeployments(p._id)}
                                                                 className="flex-1 bg-white/5 hover:bg-white/10 text-white px-4 py-2 rounded-xl text-sm font-medium transition-all border border-white/10 text-center"
@@ -532,6 +561,7 @@ export default function Dashboard() {
                                                                 </button>
                                                             )}
                                                         </div>
+                                                        </div>{/* ── content padding wrapper close ── */}
                                                     </div>
                                                 ))}
                                             </div>
