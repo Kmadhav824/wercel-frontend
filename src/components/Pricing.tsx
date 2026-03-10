@@ -98,7 +98,7 @@ export default function Pricing() {
 
                         <div className="space-y-6 relative z-10">
                             <h3 className="text-2xl font-bold text-white flex items-center gap-2">Pro <Zap className="w-5 h-5 text-indigo-400 fill-indigo-400" /></h3>
-                            <p className="text-indigo-200/60 text-sm h-10">Advanced capabilities for high-performance scale and demanding teams.</p>
+                            <p className="pricing-pro-subtitle text-indigo-200/60 text-sm h-10">Advanced capabilities for high-performance scale and demanding teams.</p>
                             <div className="flex items-baseline gap-2">
                                 <span className="text-5xl font-black">$20</span>
                                 <span className="text-slate-500 font-medium">/ user / month</span>
@@ -109,11 +109,11 @@ export default function Pricing() {
                             <div className="pt-8 space-y-4">
                                 <p className="text-sm font-bold text-white uppercase tracking-wider">Everything in Hobby, plus</p>
                                 <ul className="space-y-3">
-                                    <li className="flex gap-3 text-slate-300 text-sm"><Check className="w-5 h-5 text-indigo-400 shrink-0" /> Custom Domain Support</li>
-                                    <li className="flex gap-3 text-slate-300 text-sm"><Check className="w-5 h-5 text-indigo-400 shrink-0" /> Instant Production Rollbacks</li>
-                                    <li className="flex gap-3 text-slate-300 text-sm"><Check className="w-5 h-5 text-indigo-400 shrink-0" /> Team Collaboration Roles</li>
-                                    <li className="flex gap-3 text-slate-300 text-sm"><Check className="w-5 h-5 text-indigo-400 shrink-0" /> Extended Build Logs</li>
-                                    <li className="flex gap-3 text-slate-300 text-sm"><Check className="w-5 h-5 text-indigo-400 shrink-0" /> 1TB Edge Bandwidth</li>
+                                    <li className="pricing-pro-feature flex gap-3 text-slate-300 text-sm"><Check className="w-5 h-5 text-indigo-400 shrink-0" /> Custom Domain Support</li>
+                                    <li className="pricing-pro-feature flex gap-3 text-slate-300 text-sm"><Check className="w-5 h-5 text-indigo-400 shrink-0" /> Instant Production Rollbacks</li>
+                                    <li className="pricing-pro-feature flex gap-3 text-slate-300 text-sm"><Check className="w-5 h-5 text-indigo-400 shrink-0" /> Team Collaboration Roles</li>
+                                    <li className="pricing-pro-feature flex gap-3 text-slate-300 text-sm"><Check className="w-5 h-5 text-indigo-400 shrink-0" /> Extended Build Logs</li>
+                                    <li className="pricing-pro-feature flex gap-3 text-slate-300 text-sm"><Check className="w-5 h-5 text-indigo-400 shrink-0" /> 1TB Edge Bandwidth</li>
                                 </ul>
                             </div>
                         </div>

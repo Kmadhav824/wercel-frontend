@@ -13,6 +13,8 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import Settings from "./pages/Settings";
+import ThemeToggle from "./components/ThemeToggle";
+import { ThemeProvider, useTheme } from "./contexts/ThemeContext";
 import "./App.css";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? "";
@@ -74,37 +76,50 @@ function AppRoutes() {
   );
 }
 
+function AppShell() {
+  const { isDark } = useTheme();
+
+  return (
+    <>
+      <ThemeToggle />
+      <Toaster
+        position="bottom-right"
+        toastOptions={{
+          style: {
+            background: isDark ? "#0a0a16" : "#f8fafc",
+            color: isDark ? "#fff" : "#0f172a",
+            border: isDark ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(15,23,42,0.15)",
+            borderRadius: "12px",
+          },
+          success: {
+            iconTheme: {
+              primary: "#10B981",
+              secondary: isDark ? "#0a0a16" : "#f8fafc",
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: "#EF4444",
+              secondary: isDark ? "#0a0a16" : "#f8fafc",
+            },
+          },
+        }}
+      />
+      <AppRoutes />
+    </>
+  );
+}
+
 export default function App() {
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-      <AuthProvider>
-        <BrowserRouter>
-          <Toaster
-            position="bottom-right"
-            toastOptions={{
-              style: {
-                background: '#0a0a16',
-                color: '#fff',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '12px',
-              },
-              success: {
-                iconTheme: {
-                  primary: '#10B981',
-                  secondary: '#0a0a16',
-                },
-              },
-              error: {
-                iconTheme: {
-                  primary: '#EF4444',
-                  secondary: '#0a0a16',
-                },
-              },
-            }}
-          />
-          <AppRoutes />
-        </BrowserRouter>
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <BrowserRouter>
+            <AppShell />
+          </BrowserRouter>
+        </AuthProvider>
+      </ThemeProvider>
     </GoogleOAuthProvider>
   );
 }
