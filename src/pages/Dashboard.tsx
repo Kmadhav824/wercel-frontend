@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import EnvVarsModal from "../components/EnvVarsModal";
 import BuildSettingsModal from "../components/BuildSettingsModal";
-import { Rocket, Github, Server, CheckCircle2, Loader2, ArrowRight, Settings as SettingsIcon, LogOut, Clock, RotateCcw, Trash2, Search, Sliders, Wrench, Terminal, X, Camera } from "lucide-react";
+import { Rocket, Github, Server, CheckCircle2, Loader2, ArrowRight, Settings as SettingsIcon, LogOut, Clock, RotateCcw, Trash2, Search, Sliders, Wrench, Terminal, X, Camera, LifeBuoy, BookOpen, MessageSquare, ShieldCheck, Activity, BadgeCheck, GaugeCircle, RefreshCcw } from "lucide-react";
 
 const BACKEND_UPLOAD_URL = import.meta.env.VITE_BACKEND_UPLOAD_URL || "http://localhost:3000";
 const AUTH_URL = import.meta.env.VITE_AUTH_URL || "http://localhost:4000";
@@ -63,7 +63,7 @@ export default function Dashboard() {
 
     const [deployingRepo, setDeployingRepo] = useState<string | null>(null);
     const [rollingBack, setRollingBack] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState<"projects" | "deployments" | "github">("projects");
+    const [activeTab, setActiveTab] = useState<"projects" | "deployments" | "github" | "support" | "services">("projects");
     const [deployments, setDeployments] = useState<any[]>([]);
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
     const [searchProject, setSearchProject] = useState("");
@@ -336,6 +336,15 @@ export default function Dashboard() {
         }
     };
 
+    const activeProjects = projects.filter((p) => p.status === "deployed").length;
+    const inProgressProjects = projects.filter((p) => ["queued", "cloning", "building", "deploying"].includes(p.status)).length;
+    const failedProjects = projects.filter((p) => p.status === "failed").length;
+    const totalDeployments = deployments.length;
+    const successfulDeployments = deployments.filter((d) => d.status === "deployed").length;
+    const deploymentSuccessRate = totalDeployments > 0 ? Math.round((successfulDeployments / totalDeployments) * 100) : 100;
+    const githubStatus = githubLinked ? "Connected" : "Disconnected";
+    const platformHealth = failedProjects === 0 ? "Healthy" : failedProjects <= 2 ? "Degraded" : "Attention Needed";
+
     return (
         <div className="min-h-screen bg-[#06060c] text-slate-100 font-sans selection:bg-indigo-500/30">
             {/* Navigation */}
@@ -392,6 +401,20 @@ export default function Dashboard() {
                         >
                             <Github className="w-5 h-5" />
                             Deploy Repository
+                        </button>
+                        <button
+                            onClick={() => setActiveTab("services")}
+                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === "services" ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20" : "text-slate-400 hover:text-white hover:bg-white/5 border border-transparent"}`}
+                        >
+                            <Activity className="w-5 h-5" />
+                            Services Status
+                        </button>
+                        <button
+                            onClick={() => setActiveTab("support")}
+                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === "support" ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20" : "text-slate-400 hover:text-white hover:bg-white/5 border border-transparent"}`}
+                        >
+                            <LifeBuoy className="w-5 h-5" />
+                            Support Hub
                         </button>
                     </div>
 
@@ -753,6 +776,187 @@ export default function Dashboard() {
                                                 )}
                                             </div>
                                         )}
+                                    </div>
+                                )}
+
+                                {/* Services Status Tab */}
+                                {activeTab === "services" && (
+                                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
+                                        <div>
+                                            <h2 className="text-2xl font-bold text-white tracking-tight mb-2 flex items-center gap-3">
+                                                <Activity className="w-6 h-6" /> Services Status
+                                            </h2>
+                                            <p className="text-slate-400">Live overview of your deployments and key platform integrations.</p>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                                            <div className="bg-[#0a0a16]/80 border border-white/10 rounded-2xl p-5">
+                                                <p className="text-xs uppercase tracking-wide text-slate-500 mb-2">Active Projects</p>
+                                                <p className="text-3xl font-bold text-white">{activeProjects}</p>
+                                                <p className="text-xs text-slate-400 mt-2">Currently serving traffic</p>
+                                            </div>
+                                            <div className="bg-[#0a0a16]/80 border border-white/10 rounded-2xl p-5">
+                                                <p className="text-xs uppercase tracking-wide text-slate-500 mb-2">Build Queue</p>
+                                                <p className="text-3xl font-bold text-amber-300">{inProgressProjects}</p>
+                                                <p className="text-xs text-slate-400 mt-2">Queued, cloning, building, deploying</p>
+                                            </div>
+                                            <div className="bg-[#0a0a16]/80 border border-white/10 rounded-2xl p-5">
+                                                <p className="text-xs uppercase tracking-wide text-slate-500 mb-2">Deployment Success</p>
+                                                <p className="text-3xl font-bold text-emerald-300">{deploymentSuccessRate}%</p>
+                                                <p className="text-xs text-slate-400 mt-2">From selected project history</p>
+                                            </div>
+                                            <div className="bg-[#0a0a16]/80 border border-white/10 rounded-2xl p-5">
+                                                <p className="text-xs uppercase tracking-wide text-slate-500 mb-2">GitHub Link</p>
+                                                <p className={`text-3xl font-bold ${githubLinked ? "text-emerald-300" : "text-rose-300"}`}>{githubStatus}</p>
+                                                <p className="text-xs text-slate-400 mt-2">Repository sync availability</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                            <div className="bg-[#0a0a16]/80 border border-white/10 rounded-2xl p-5">
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <h3 className="text-white font-semibold flex items-center gap-2"><GaugeCircle className="w-4 h-4 text-indigo-300" /> Platform Health</h3>
+                                                    <span className={`text-xs px-2.5 py-1 rounded-full border ${platformHealth === "Healthy" ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300" : platformHealth === "Degraded" ? "border-amber-500/40 bg-amber-500/10 text-amber-300" : "border-rose-500/40 bg-rose-500/10 text-rose-300"}`}>{platformHealth}</span>
+                                                </div>
+                                                <div className="space-y-3 text-sm">
+                                                    <div className="flex items-center justify-between text-slate-300">
+                                                        <span>Running Deployments</span>
+                                                        <span className="font-semibold text-white">{inProgressProjects}</span>
+                                                    </div>
+                                                    <div className="flex items-center justify-between text-slate-300">
+                                                        <span>Failed Projects</span>
+                                                        <span className="font-semibold text-white">{failedProjects}</span>
+                                                    </div>
+                                                    <div className="flex items-center justify-between text-slate-300">
+                                                        <span>Deployment Records Loaded</span>
+                                                        <span className="font-semibold text-white">{totalDeployments}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="bg-[#0a0a16]/80 border border-white/10 rounded-2xl p-5">
+                                                <h3 className="text-white font-semibold mb-4 flex items-center gap-2"><BadgeCheck className="w-4 h-4 text-indigo-300" /> Recommended Actions</h3>
+                                                <div className="space-y-3">
+                                                    <button
+                                                        onClick={() => setActiveTab("projects")}
+                                                        className="w-full flex items-center justify-between text-left bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 transition-colors"
+                                                    >
+                                                        Review project health and logs
+                                                        <ArrowRight className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setActiveTab("github")}
+                                                        className="w-full flex items-center justify-between text-left bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 transition-colors"
+                                                    >
+                                                        Add a new repository deployment
+                                                        <ArrowRight className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => {
+                                                            if (selectedProjectId) {
+                                                                loadDeployments(selectedProjectId);
+                                                            } else {
+                                                                setActiveTab("projects");
+                                                            }
+                                                        }}
+                                                        className="w-full flex items-center justify-between text-left bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 transition-colors"
+                                                    >
+                                                        Refresh deployment timeline
+                                                        <RefreshCcw className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Support Hub Tab */}
+                                {activeTab === "support" && (
+                                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
+                                        <div>
+                                            <h2 className="text-2xl font-bold text-white tracking-tight mb-2 flex items-center gap-3">
+                                                <LifeBuoy className="w-6 h-6" /> Support Hub
+                                            </h2>
+                                            <p className="text-slate-400">Resources and actions to help users troubleshoot, secure, and scale deployments faster.</p>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                                            <div className="bg-[#0a0a16]/80 border border-white/10 rounded-2xl p-5 lg:col-span-2">
+                                                <h3 className="text-white font-semibold mb-4">Quick Help Actions</h3>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                    <button
+                                                        onClick={() => setActiveTab("projects")}
+                                                        className="text-left bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl p-4 transition-colors"
+                                                    >
+                                                        <p className="text-sm font-semibold text-white mb-1 flex items-center gap-2"><Terminal className="w-4 h-4 text-indigo-300" /> Review Build Logs</p>
+                                                        <p className="text-xs text-slate-400">Check the latest deployment output and failure points.</p>
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setActiveTab("services")}
+                                                        className="text-left bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl p-4 transition-colors"
+                                                    >
+                                                        <p className="text-sm font-semibold text-white mb-1 flex items-center gap-2"><Activity className="w-4 h-4 text-indigo-300" /> Service Diagnostics</p>
+                                                        <p className="text-xs text-slate-400">View current health signals and deployment reliability.</p>
+                                                    </button>
+                                                    <Link
+                                                        to="/settings"
+                                                        className="text-left bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl p-4 transition-colors block"
+                                                    >
+                                                        <p className="text-sm font-semibold text-white mb-1 flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-indigo-300" /> Security & Access</p>
+                                                        <p className="text-xs text-slate-400">Update account settings and connected provider access.</p>
+                                                    </Link>
+                                                    <Link
+                                                        to="/"
+                                                        className="text-left bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl p-4 transition-colors block"
+                                                    >
+                                                        <p className="text-sm font-semibold text-white mb-1 flex items-center gap-2"><BookOpen className="w-4 h-4 text-indigo-300" /> Deployment Guide</p>
+                                                        <p className="text-xs text-slate-400">Review setup and deployment flow from the landing docs.</p>
+                                                    </Link>
+                                                </div>
+                                            </div>
+
+                                            <div className="bg-[#0a0a16]/80 border border-white/10 rounded-2xl p-5">
+                                                <h3 className="text-white font-semibold mb-4">Current Account Snapshot</h3>
+                                                <div className="space-y-3 text-sm">
+                                                    <div className="flex items-center justify-between text-slate-300">
+                                                        <span>Total Projects</span>
+                                                        <span className="text-white font-semibold">{projects.length}</span>
+                                                    </div>
+                                                    <div className="flex items-center justify-between text-slate-300">
+                                                        <span>Connected Repositories</span>
+                                                        <span className="text-white font-semibold">{repos.length}</span>
+                                                    </div>
+                                                    <div className="flex items-center justify-between text-slate-300">
+                                                        <span>Failed Deployments</span>
+                                                        <span className="text-white font-semibold">{failedProjects}</span>
+                                                    </div>
+                                                    <div className="flex items-center justify-between text-slate-300">
+                                                        <span>Support Priority</span>
+                                                        <span className={`text-xs px-2 py-1 rounded-md border ${failedProjects > 0 ? "text-amber-300 border-amber-500/30 bg-amber-500/10" : "text-emerald-300 border-emerald-500/30 bg-emerald-500/10"}`}>
+                                                            {failedProjects > 0 ? "Medium" : "Low"}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-[#0a0a16]/80 border border-white/10 rounded-2xl p-5">
+                                            <h3 className="text-white font-semibold mb-4">Support Services</h3>
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                                <div className="border border-white/10 bg-white/5 rounded-xl p-4">
+                                                    <p className="text-sm font-semibold text-white flex items-center gap-2"><MessageSquare className="w-4 h-4 text-indigo-300" /> Incident Reporting</p>
+                                                    <p className="text-xs text-slate-400 mt-2">Capture deployment issues and error contexts before escalation.</p>
+                                                </div>
+                                                <div className="border border-white/10 bg-white/5 rounded-xl p-4">
+                                                    <p className="text-sm font-semibold text-white flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-indigo-300" /> Runtime Safeguards</p>
+                                                    <p className="text-xs text-slate-400 mt-2">Use environment controls and build settings to prevent bad releases.</p>
+                                                </div>
+                                                <div className="border border-white/10 bg-white/5 rounded-xl p-4">
+                                                    <p className="text-sm font-semibold text-white flex items-center gap-2"><BookOpen className="w-4 h-4 text-indigo-300" /> Knowledge Base</p>
+                                                    <p className="text-xs text-slate-400 mt-2">Standard playbooks for common deployment, DNS, and rollback workflows.</p>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
 
