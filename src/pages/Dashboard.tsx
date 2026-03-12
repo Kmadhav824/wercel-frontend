@@ -10,30 +10,48 @@ import { Rocket, Github, Server, CheckCircle2, Loader2, ArrowRight, Settings as 
 const BACKEND_UPLOAD_URL = import.meta.env.VITE_BACKEND_UPLOAD_URL || "http://localhost:3000";
 const AUTH_URL = import.meta.env.VITE_AUTH_URL || "http://localhost:4000";
 const REQUEST_HANDLER_DOMAIN = import.meta.env.VITE_REQUEST_HANDLER_DOMAIN;
+const REQUEST_HANDLER_PROTOCOL = import.meta.env.VITE_REQUEST_HANDLER_PROTOCOL;
 
 let requestHandlerHostname = "localhost";
 let requestHandlerPort = ":3001";
+let requestHandlerProtocol = "http";
 try {
     if (REQUEST_HANDLER_DOMAIN) {
-        // If it includes a port (e.g. localhost:3001), split it
-        if (REQUEST_HANDLER_DOMAIN.includes(":")) {
-            const parts = REQUEST_HANDLER_DOMAIN.split(":");
-            requestHandlerHostname = parts[0];
-            requestHandlerPort = `:${parts[1]}`;
+        if (REQUEST_HANDLER_DOMAIN.startsWith("http://") || REQUEST_HANDLER_DOMAIN.startsWith("https://")) {
+            const url = new URL(REQUEST_HANDLER_DOMAIN);
+            requestHandlerHostname = url.hostname;
+            requestHandlerPort = url.port ? `:${url.port}` : "";
+            requestHandlerProtocol = url.protocol.replace(":", "");
         } else {
-            requestHandlerHostname = REQUEST_HANDLER_DOMAIN;
-            requestHandlerPort = "";
+        // If it includes a port (e.g. localhost:3001), split it
+            if (REQUEST_HANDLER_DOMAIN.includes(":")) {
+                const parts = REQUEST_HANDLER_DOMAIN.split(":");
+                requestHandlerHostname = parts[0];
+                requestHandlerPort = `:${parts[1]}`;
+            } else {
+                requestHandlerHostname = REQUEST_HANDLER_DOMAIN;
+                requestHandlerPort = "";
+            }
         }
     } else {
         const url = new URL(BACKEND_UPLOAD_URL);
         requestHandlerHostname = url.hostname;
         if (requestHandlerHostname !== "localhost") {
             requestHandlerPort = ""; // use default HTTP/HTTPS ports in production
+            requestHandlerProtocol = "https";
         }
     }
 } catch (e) {
     // Ignore
 }
+
+if (REQUEST_HANDLER_PROTOCOL) {
+    requestHandlerProtocol = REQUEST_HANDLER_PROTOCOL.replace(":", "");
+} else if (requestHandlerHostname !== "localhost" && requestHandlerProtocol === "http" && requestHandlerPort !== ":3001") {
+    requestHandlerProtocol = "https";
+}
+
+const getDeploymentUrl = (deploymentId: string) => `${requestHandlerProtocol}://${deploymentId}.${requestHandlerHostname}${requestHandlerPort}`;
 
 export default function Dashboard() {
     const { user, token, logout } = useAuth();
@@ -491,7 +509,7 @@ export default function Dashboard() {
                                                         <div className="space-y-3 mb-5">
                                                             {p.status === "deployed" ? (
                                                                 <a
-                                                                    href={`http://${p.activeDeploymentId}.${requestHandlerHostname}${requestHandlerPort}`}
+                                                                    href={getDeploymentUrl(p.activeDeploymentId)}
                                                                     target="_blank"
                                                                     rel="noreferrer"
                                                                     className="text-slate-300 hover:text-indigo-400 text-sm truncate block font-mono bg-white/5 px-3 py-2 rounded-lg"
@@ -545,7 +563,7 @@ export default function Dashboard() {
                                                             </button>
                                                             {p.status === "deployed" ? (
                                                                 <a
-                                                                    href={`http://${p.activeDeploymentId}.${requestHandlerHostname}${requestHandlerPort}`}
+                                                                    href={getDeploymentUrl(p.activeDeploymentId)}
                                                                     target="_blank"
                                                                     rel="noreferrer"
                                                                     className="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-medium shadow-[0_0_15px_rgba(99,102,241,0.2)] transition-all flex items-center justify-center"
@@ -636,7 +654,7 @@ export default function Dashboard() {
                                                                     </button>
 
                                                                     <a
-                                                                        href={`http://${d.uploadId}.${requestHandlerHostname}${requestHandlerPort}`}
+                                                                        href={getDeploymentUrl(d.uploadId)}
                                                                         target="_blank"
                                                                         rel="noreferrer"
                                                                         className="flex items-center gap-2 text-indigo-400 hover:text-indigo-300 bg-indigo-500/10 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
