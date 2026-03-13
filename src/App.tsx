@@ -13,7 +13,6 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import Settings from "./pages/Settings";
-import ThemeToggle from "./components/ThemeToggle";
 import { ThemeProvider, useTheme } from "./contexts/ThemeContext";
 import "./App.css";
 
@@ -81,7 +80,6 @@ function AppShell() {
 
   return (
     <>
-      <ThemeToggle />
       <Toaster
         position="bottom-right"
         toastOptions={{

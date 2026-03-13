@@ -3,7 +3,8 @@ import toast from "react-hot-toast";
 import axios from "axios";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { Github, ArrowLeft, Loader2, Link2, ShieldCheck, Unplug } from "lucide-react";
+import { useTheme } from "../contexts/ThemeContext";
+import { Github, ArrowLeft, Loader2, Link2, ShieldCheck, Unplug, Sun, Moon } from "lucide-react";
 
 const AUTH_URL = import.meta.env.VITE_AUTH_URL || "http://localhost:4000";
 
@@ -15,6 +16,7 @@ type GithubProfile = {
 
 export default function Settings() {
     const { user, token, setUser } = useAuth();
+    const { theme, setTheme } = useTheme();
     const navigate = useNavigate();
     const location = useLocation();
     const [connectingGithub, setConnectingGithub] = useState(false);
@@ -153,6 +155,34 @@ export default function Settings() {
                                 <div className="text-slate-400 text-sm">{user?.email}</div>
                                 {user?.id && <div className="text-xs font-mono text-slate-600 mt-2 mt-2 pt-2 border-t border-white/5">ID: {user.id}</div>}
                             </div>
+                        </div>
+                    </div>
+
+                    {/* Integrations */}
+                    <div className="p-8 flex flex-col md:flex-row gap-8 items-start">
+                        <div className="w-full md:w-1/3 space-y-2">
+                            <h3 className="text-lg font-semibold text-white">Appearance</h3>
+                            <p className="text-sm text-slate-400">Set how Nexus should look for your account on this device.</p>
+                        </div>
+
+                        <div className="w-full md:w-2/3 bg-white/5 border border-white/10 rounded-xl p-6 space-y-4">
+                            <div className="flex flex-col sm:flex-row gap-3">
+                                <button
+                                    onClick={() => setTheme("dark")}
+                                    className={`flex-1 rounded-xl border px-4 py-3 text-sm font-semibold transition-all flex items-center justify-center gap-2 ${theme === "dark" ? "bg-indigo-500/20 border-indigo-500/40 text-indigo-200" : "bg-[#05050f] border-white/10 text-slate-300 hover:bg-white/5"}`}
+                                >
+                                    <Moon className="w-4 h-4" />
+                                    Dark mode
+                                </button>
+                                <button
+                                    onClick={() => setTheme("light")}
+                                    className={`flex-1 rounded-xl border px-4 py-3 text-sm font-semibold transition-all flex items-center justify-center gap-2 ${theme === "light" ? "bg-indigo-500/20 border-indigo-500/40 text-indigo-200" : "bg-[#05050f] border-white/10 text-slate-300 hover:bg-white/5"}`}
+                                >
+                                    <Sun className="w-4 h-4" />
+                                    Light mode
+                                </button>
+                            </div>
+                            <p className="text-xs text-slate-500">Theme preference is saved automatically and remembered on your next visit.</p>
                         </div>
                     </div>
 
