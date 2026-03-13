@@ -1,59 +1,116 @@
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import axios from "axios";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { Github, Save, CheckCircle2, ArrowLeft, Loader2, Key } from "lucide-react";
+import { Github, ArrowLeft, Loader2, Link2, ShieldCheck, Unplug } from "lucide-react";
 
 const AUTH_URL = import.meta.env.VITE_AUTH_URL || "http://localhost:4000";
 
+type GithubProfile = {
+    username: string;
+    avatarUrl?: string;
+    linkedAt?: string;
+};
+
 export default function Settings() {
     const { user, token, setUser } = useAuth();
-    const [githubToken, setGithubToken] = useState("");
-    const [saving, setSaving] = useState(false);
-    const [saved, setSaved] = useState(false);
+    const navigate = useNavigate();
+    const location = useLocation();
+    const [connectingGithub, setConnectingGithub] = useState(false);
+    const [disconnectingGithub, setDisconnectingGithub] = useState(false);
+    const [githubConfigured, setGithubConfigured] = useState(true);
+    const [githubProfile, setGithubProfile] = useState<GithubProfile | null>(null);
+    const [hasGithubLink, setHasGithubLink] = useState(false);
 
-    const [hasToken, setHasToken] = useState(false);
+    const loadGithubStatus = async () => {
+        if (!token) return;
+
+        try {
+            const res = await axios.get(`${AUTH_URL}/auth/github/status`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            setHasGithubLink(Boolean(res.data.linked));
+            setGithubProfile(res.data.profile ?? null);
+            setGithubConfigured(true);
+        } catch (err: any) {
+            if (err.response?.status === 503) {
+                setGithubConfigured(false);
+                setHasGithubLink(false);
+                setGithubProfile(null);
+                return;
+            }
+
+            setHasGithubLink(false);
+            setGithubProfile(null);
+        }
+    };
 
     useEffect(() => {
         if (token) {
-            axios.get(`${AUTH_URL}/auth/github/repos`, {
-                headers: { Authorization: `Bearer ${token}` }
-            }).then(() => {
-                setHasToken(true);
-            }).catch(() => {
-                setHasToken(false);
-            });
+            loadGithubStatus();
         }
     }, [token]);
 
-    const handleLinkGithub = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!githubToken) return;
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const github = params.get("github");
+        const githubError = params.get("github_error");
 
-        setSaving(true);
-        setSaved(false);
+        if (!github && !githubError) return;
+
+        if (github === "linked") {
+            toast.success("GitHub account linked successfully.");
+            loadGithubStatus();
+        }
+
+        if (githubError) {
+            toast.error(githubError);
+        }
+
+        navigate(location.pathname, { replace: true });
+    }, [location.pathname, location.search, navigate, token]);
+
+    const handleConnectGithub = async () => {
+        if (!token) return;
+
+        setConnectingGithub(true);
 
         try {
-            await axios.put(`${AUTH_URL}/auth/github/link`, {
-                token: githubToken
+            const res = await axios.post(`${AUTH_URL}/auth/github/oauth/start`, {
+                returnTo: `${window.location.origin}/settings`
             }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
-            setHasToken(true);
-            setSaved(true);
-            setGithubToken(""); // Clear after saving for security feeling
-
-            setTimeout(() => setSaved(false), 3000);
+            window.location.assign(res.data.url);
         } catch (err: any) {
-            if (err.response?.status === 404) {
-                toast.error("Backend endpoint not found.");
-            } else {
-                toast.error(err.response?.data?.error || "Error linking GitHub token");
+            if (err.response?.status === 503) {
+                setGithubConfigured(false);
             }
+            toast.error(err.response?.data?.error || "Failed to start GitHub linking");
         } finally {
-            setSaving(false);
+            setConnectingGithub(false);
+        }
+    };
+
+    const handleDisconnectGithub = async () => {
+        if (!token) return;
+
+        setDisconnectingGithub(true);
+
+        try {
+            await axios.delete(`${AUTH_URL}/auth/github/link`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setHasGithubLink(false);
+            setGithubProfile(null);
+            toast.success("GitHub account disconnected.");
+        } catch (err: any) {
+            toast.error(err.response?.data?.error || "Failed to disconnect GitHub account");
+        } finally {
+            setDisconnectingGithub(false);
         }
     };
 
@@ -114,53 +171,84 @@ export default function Settings() {
                                 <div>
                                     <h4 className="font-semibold text-lg flex items-center gap-2">
                                         GitHub Platform
-                                        {hasToken && (
+                                        {hasGithubLink && (
                                             <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Connected</span>
                                         )}
                                     </h4>
-                                    <p className="text-sm text-slate-400">Import repositories automatically to deploy them.</p>
+                                    <p className="text-sm text-slate-400">Link your GitHub account directly to import repositories without creating a personal access token.</p>
                                 </div>
                             </div>
 
-                            <form onSubmit={handleLinkGithub} className="space-y-4 pt-4 border-t border-white/5">
-                                <div>
-                                    <label htmlFor="token" className="block text-sm font-medium text-slate-300 mb-2">Personal Access Token (PAT)</label>
-                                    <div className="relative">
-                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <Key className="h-5 w-5 text-slate-500" />
+                            <div className="space-y-5 pt-4 border-t border-white/5">
+                                {hasGithubLink && githubProfile ? (
+                                    <div className="bg-[#05050f] border border-white/10 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                        <div className="flex items-center gap-4 min-w-0">
+                                            {githubProfile.avatarUrl ? (
+                                                <img src={githubProfile.avatarUrl} alt="GitHub avatar" className="w-14 h-14 rounded-2xl border border-white/10 object-cover" />
+                                            ) : (
+                                                <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
+                                                    <Github className="w-6 h-6 text-slate-300" />
+                                                </div>
+                                            )}
+                                            <div className="min-w-0">
+                                                <p className="text-sm text-slate-400 mb-1">Connected GitHub profile</p>
+                                                <p className="text-lg font-semibold text-white truncate">@{githubProfile.username}</p>
+                                                <p className="text-xs text-slate-500 mt-1">
+                                                    Linked {githubProfile.linkedAt ? new Date(githubProfile.linkedAt).toLocaleString() : "recently"}
+                                                </p>
+                                            </div>
                                         </div>
-                                        <input
-                                            type="password"
-                                            id="token"
-                                            value={githubToken}
-                                            onChange={(e) => setGithubToken(e.target.value)}
-                                            placeholder="ghp_xxxxxxxxxxxxxxxxxxx"
-                                            className="block w-full pl-10 pr-3 py-3 bg-[#05050f] border border-white/10 rounded-xl text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
-                                            required
-                                        />
+                                        <button
+                                            onClick={handleDisconnectGithub}
+                                            disabled={disconnectingGithub}
+                                            className="shrink-0 bg-white/5 hover:bg-white/10 border border-white/10 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 disabled:opacity-60"
+                                        >
+                                            {disconnectingGithub ? <Loader2 className="w-4 h-4 animate-spin" /> : <Unplug className="w-4 h-4" />}
+                                            Disconnect
+                                        </button>
                                     </div>
-                                    <p className="mt-2 text-xs text-slate-500">
-                                        Generate a classic token in GitHub Settings &rarr; Developer settings with `repo` scope. We store it securely.
-                                    </p>
-                                </div>
+                                ) : (
+                                    <div className="bg-[#05050f] border border-white/10 rounded-2xl p-5 space-y-4">
+                                        <div className="flex items-start gap-3">
+                                            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0">
+                                                <Link2 className="w-5 h-5 text-indigo-300" />
+                                            </div>
+                                            <div>
+                                                <h5 className="text-base font-semibold text-white">Connect with GitHub OAuth</h5>
+                                                <p className="text-sm text-slate-400 mt-1">You will be redirected to GitHub to authorize repository access and then returned here automatically.</p>
+                                            </div>
+                                        </div>
 
-                                <div className="flex items-center gap-4">
-                                    <button
-                                        type="submit"
-                                        disabled={saving || !githubToken}
-                                        className="bg-white text-black hover:bg-slate-200 px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                                        Save Token
-                                    </button>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                            <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                                                <p className="text-sm font-medium text-white mb-1 flex items-center gap-2"><Github className="w-4 h-4 text-indigo-300" /> No PAT required</p>
+                                                <p className="text-xs text-slate-400">Users can link GitHub directly using the standard GitHub approval screen.</p>
+                                            </div>
+                                            <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                                                <p className="text-sm font-medium text-white mb-1 flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-indigo-300" /> Scoped access</p>
+                                                <p className="text-xs text-slate-400">The connection is limited to the permissions needed to list and deploy repositories.</p>
+                                            </div>
+                                        </div>
 
-                                    {saved && (
-                                        <span className="text-emerald-400 text-sm font-medium flex items-center gap-1.5 animate-in fade-in">
-                                            <CheckCircle2 className="w-4 h-4" /> Saved automatically
-                                        </span>
-                                    )}
-                                </div>
-                            </form>
+                                        <button
+                                            onClick={handleConnectGithub}
+                                            disabled={connectingGithub || !githubConfigured}
+                                            className="bg-white text-black hover:bg-slate-200 px-6 py-3 rounded-xl text-sm font-bold transition-all inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            {connectingGithub ? <Loader2 className="w-4 h-4 animate-spin" /> : <Github className="w-4 h-4" />}
+                                            Connect GitHub
+                                        </button>
+
+                                        {!githubConfigured && (
+                                            <p className="text-xs text-amber-300">GitHub OAuth is not configured on the server yet. Add the GitHub OAuth app environment variables in the auth service to enable this flow.</p>
+                                        )}
+                                    </div>
+                                )}
+
+                                <p className="text-xs text-slate-500">
+                                    If you need private repository access, ensure your GitHub OAuth app is configured with the correct callback URL and repository scope.
+                                </p>
+                            </div>
                         </div>
                     </div>
 
