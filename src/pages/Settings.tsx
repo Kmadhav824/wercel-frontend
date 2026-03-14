@@ -4,7 +4,7 @@ import axios from "axios";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
-import { Github, ArrowLeft, Loader2, Link2, ShieldCheck, Unplug, Sun, Moon } from "lucide-react";
+import { Github, ArrowLeft, Loader2, Link2, ShieldCheck, Unplug, Sun, Moon, Bell, LockKeyhole, Mail, GitBranch, Download, Sparkles, LogOut } from "lucide-react";
 
 const AUTH_URL = import.meta.env.VITE_AUTH_URL || "http://localhost:4000";
 
@@ -14,8 +14,39 @@ type GithubProfile = {
     linkedAt?: string;
 };
 
+type NotificationPreferences = {
+    deploymentSuccess: boolean;
+    deploymentFailure: boolean;
+    weeklyDigest: boolean;
+    securityAlerts: boolean;
+};
+
+type DeploymentPreferences = {
+    defaultBranch: string;
+    autoDeployOnPush: boolean;
+    autoOpenLogs: boolean;
+    autoRefreshScreenshot: boolean;
+};
+
+const NOTIFICATION_PREFS_KEY = "nexus_settings_notification_prefs";
+const DEPLOYMENT_PREFS_KEY = "nexus_settings_deployment_prefs";
+
+const defaultNotificationPreferences: NotificationPreferences = {
+    deploymentSuccess: true,
+    deploymentFailure: true,
+    weeklyDigest: false,
+    securityAlerts: true,
+};
+
+const defaultDeploymentPreferences: DeploymentPreferences = {
+    defaultBranch: "main",
+    autoDeployOnPush: true,
+    autoOpenLogs: true,
+    autoRefreshScreenshot: false,
+};
+
 export default function Settings() {
-    const { user, token, setUser } = useAuth();
+    const { user, token, setUser, logout } = useAuth();
     const { theme, setTheme } = useTheme();
     const navigate = useNavigate();
     const location = useLocation();
@@ -24,6 +55,97 @@ export default function Settings() {
     const [githubConfigured, setGithubConfigured] = useState(true);
     const [githubProfile, setGithubProfile] = useState<GithubProfile | null>(null);
     const [hasGithubLink, setHasGithubLink] = useState(false);
+    const [sendingPasswordReset, setSendingPasswordReset] = useState(false);
+    const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreferences>(defaultNotificationPreferences);
+    const [deploymentPreferences, setDeploymentPreferences] = useState<DeploymentPreferences>(defaultDeploymentPreferences);
+
+    useEffect(() => {
+        const savedNotifications = localStorage.getItem(NOTIFICATION_PREFS_KEY);
+        const savedDeploymentPreferences = localStorage.getItem(DEPLOYMENT_PREFS_KEY);
+
+        if (savedNotifications) {
+            try {
+                const parsed = JSON.parse(savedNotifications) as Partial<NotificationPreferences>;
+                setNotificationPreferences({
+                    ...defaultNotificationPreferences,
+                    ...parsed,
+                });
+            } catch {
+                setNotificationPreferences(defaultNotificationPreferences);
+            }
+        }
+
+        if (savedDeploymentPreferences) {
+            try {
+                const parsed = JSON.parse(savedDeploymentPreferences) as Partial<DeploymentPreferences>;
+                setDeploymentPreferences({
+                    ...defaultDeploymentPreferences,
+                    ...parsed,
+                });
+            } catch {
+                setDeploymentPreferences(defaultDeploymentPreferences);
+            }
+        }
+    }, []);
+
+    const updateNotificationPreferences = (patch: Partial<NotificationPreferences>) => {
+        const next = { ...notificationPreferences, ...patch };
+        setNotificationPreferences(next);
+        localStorage.setItem(NOTIFICATION_PREFS_KEY, JSON.stringify(next));
+    };
+
+    const updateDeploymentPreferences = (patch: Partial<DeploymentPreferences>) => {
+        const next = { ...deploymentPreferences, ...patch };
+        setDeploymentPreferences(next);
+        localStorage.setItem(DEPLOYMENT_PREFS_KEY, JSON.stringify(next));
+    };
+
+    const handleSendPasswordReset = async () => {
+        if (!user?.email) {
+            toast.error("No email found for this account");
+            return;
+        }
+
+        setSendingPasswordReset(true);
+        try {
+            await axios.post(`${AUTH_URL}/auth/forgot-password`, {
+                email: user.email,
+            });
+            toast.success("Password reset link sent to your email.");
+        } catch (err: any) {
+            toast.error(err.response?.data?.error || "Failed to send password reset email");
+        } finally {
+            setSendingPasswordReset(false);
+        }
+    };
+
+    const handleExportSettings = () => {
+        const data = {
+            account: {
+                id: user?.id,
+                name: user?.name,
+                email: user?.email,
+                createdAt: user?.createdAt,
+                lastLoginAt: user?.lastLoginAt,
+                loginCount: user?.loginCount,
+            },
+            preferences: {
+                theme,
+                notifications: notificationPreferences,
+                deploymentDefaults: deploymentPreferences,
+            },
+            exportedAt: new Date().toISOString(),
+        };
+
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `nexus-settings-${new Date().toISOString().slice(0, 10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success("Settings export downloaded.");
+    };
 
     const loadGithubStatus = async () => {
         if (!token) return;
@@ -279,6 +401,188 @@ export default function Settings() {
                                     If you need private repository access, ensure your GitHub OAuth app is configured with the correct callback URL and repository scope.
                                 </p>
                             </div>
+                        </div>
+                    </div>
+
+                    {/* Security */}
+                    <div className="p-8 flex flex-col md:flex-row gap-8 items-start">
+                        <div className="w-full md:w-1/3 space-y-2">
+                            <h3 className="text-lg font-semibold text-white">Security</h3>
+                            <p className="text-sm text-slate-400">Protect account access and monitor sign-in activity.</p>
+                        </div>
+
+                        <div className="w-full md:w-2/3 bg-white/5 border border-white/10 rounded-xl p-6 space-y-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <button
+                                    onClick={handleSendPasswordReset}
+                                    disabled={sendingPasswordReset}
+                                    className="bg-[#05050f] hover:bg-white/5 border border-white/10 rounded-xl p-4 text-left transition-colors disabled:opacity-60"
+                                >
+                                    <p className="text-sm font-semibold text-white mb-1 flex items-center gap-2">
+                                        {sendingPasswordReset ? <Loader2 className="w-4 h-4 animate-spin text-indigo-300" /> : <Mail className="w-4 h-4 text-indigo-300" />}
+                                        Send password reset email
+                                    </p>
+                                    <p className="text-xs text-slate-400">Send a secure reset link to {user?.email}.</p>
+                                </button>
+
+                                <a
+                                    href="https://github.com/settings/security"
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="bg-[#05050f] hover:bg-white/5 border border-white/10 rounded-xl p-4 text-left transition-colors block"
+                                >
+                                    <p className="text-sm font-semibold text-white mb-1 flex items-center gap-2"><LockKeyhole className="w-4 h-4 text-indigo-300" /> Review GitHub 2FA</p>
+                                    <p className="text-xs text-slate-400">Recommended for linked source-control accounts.</p>
+                                </a>
+                            </div>
+
+                            <div className="bg-[#05050f] border border-white/10 rounded-xl p-4 space-y-2">
+                                <p className="text-sm font-semibold text-white">Session Summary</p>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                                    <div className="bg-white/5 border border-white/10 rounded-lg p-3">
+                                        <p className="text-slate-500 mb-1">Member Since</p>
+                                        <p className="text-slate-200">{user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : "Not available"}</p>
+                                    </div>
+                                    <div className="bg-white/5 border border-white/10 rounded-lg p-3">
+                                        <p className="text-slate-500 mb-1">Last Login</p>
+                                        <p className="text-slate-200">{user?.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : "Not available"}</p>
+                                    </div>
+                                    <div className="bg-white/5 border border-white/10 rounded-lg p-3">
+                                        <p className="text-slate-500 mb-1">Total Sign-ins</p>
+                                        <p className="text-slate-200">{typeof user?.loginCount === "number" ? user.loginCount : "Not available"}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => {
+                                    logout();
+                                    navigate("/login");
+                                }}
+                                className="text-sm text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl px-4 py-2.5 inline-flex items-center gap-2 transition-colors"
+                            >
+                                <LogOut className="w-4 h-4" />
+                                Sign out on this device
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Notifications */}
+                    <div className="p-8 flex flex-col md:flex-row gap-8 items-start">
+                        <div className="w-full md:w-1/3 space-y-2">
+                            <h3 className="text-lg font-semibold text-white">Notifications</h3>
+                            <p className="text-sm text-slate-400">Choose which operational events should surface in your account workflow.</p>
+                        </div>
+
+                        <div className="w-full md:w-2/3 bg-white/5 border border-white/10 rounded-xl p-6 space-y-3">
+                            {[
+                                { key: "deploymentSuccess", label: "Deployment success", note: "Show when a build reaches production." },
+                                { key: "deploymentFailure", label: "Deployment failure", note: "Show when clone/build/deploy fails." },
+                                { key: "securityAlerts", label: "Security alerts", note: "Show when integration or auth issues are detected." },
+                                { key: "weeklyDigest", label: "Weekly digest", note: "Show weekly performance and deployment summary." },
+                            ].map((item) => (
+                                <label key={item.key} className="flex items-start justify-between gap-4 bg-[#05050f] border border-white/10 rounded-xl px-4 py-3 cursor-pointer">
+                                    <div>
+                                        <p className="text-sm font-medium text-white flex items-center gap-2"><Bell className="w-4 h-4 text-indigo-300" /> {item.label}</p>
+                                        <p className="text-xs text-slate-400 mt-1">{item.note}</p>
+                                    </div>
+                                    <input
+                                        type="checkbox"
+                                        checked={notificationPreferences[item.key as keyof NotificationPreferences]}
+                                        onChange={(e) => updateNotificationPreferences({ [item.key]: e.target.checked })}
+                                        className="mt-1 h-4 w-4 rounded border-white/20 bg-transparent accent-indigo-500"
+                                    />
+                                </label>
+                            ))}
+                            <p className="text-xs text-slate-500">Preferences are saved locally for this browser session profile.</p>
+                        </div>
+                    </div>
+
+                    {/* Deployment Defaults */}
+                    <div className="p-8 flex flex-col md:flex-row gap-8 items-start">
+                        <div className="w-full md:w-1/3 space-y-2">
+                            <h3 className="text-lg font-semibold text-white">Deployment Defaults</h3>
+                            <p className="text-sm text-slate-400">Set preferred behavior for new projects and deployment workflows.</p>
+                        </div>
+
+                        <div className="w-full md:w-2/3 bg-white/5 border border-white/10 rounded-xl p-6 space-y-4">
+                            <div>
+                                <label htmlFor="defaultBranch" className="text-sm text-slate-300 mb-2 block">Default branch name</label>
+                                <div className="relative">
+                                    <GitBranch className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                                    <input
+                                        id="defaultBranch"
+                                        value={deploymentPreferences.defaultBranch}
+                                        onChange={(e) => updateDeploymentPreferences({ defaultBranch: e.target.value })}
+                                        placeholder="main"
+                                        className="w-full bg-[#05050f] border border-white/10 text-white rounded-lg pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500/50"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <label className="flex items-center justify-between bg-[#05050f] border border-white/10 rounded-xl px-4 py-3 cursor-pointer">
+                                    <div>
+                                        <p className="text-sm text-white font-medium">Auto-deploy on push</p>
+                                        <p className="text-xs text-slate-400 mt-1">Trigger deployment after repository updates.</p>
+                                    </div>
+                                    <input
+                                        type="checkbox"
+                                        checked={deploymentPreferences.autoDeployOnPush}
+                                        onChange={(e) => updateDeploymentPreferences({ autoDeployOnPush: e.target.checked })}
+                                        className="h-4 w-4 rounded border-white/20 bg-transparent accent-indigo-500"
+                                    />
+                                </label>
+
+                                <label className="flex items-center justify-between bg-[#05050f] border border-white/10 rounded-xl px-4 py-3 cursor-pointer">
+                                    <div>
+                                        <p className="text-sm text-white font-medium">Auto-open live logs</p>
+                                        <p className="text-xs text-slate-400 mt-1">Open logs panel when build starts.</p>
+                                    </div>
+                                    <input
+                                        type="checkbox"
+                                        checked={deploymentPreferences.autoOpenLogs}
+                                        onChange={(e) => updateDeploymentPreferences({ autoOpenLogs: e.target.checked })}
+                                        className="h-4 w-4 rounded border-white/20 bg-transparent accent-indigo-500"
+                                    />
+                                </label>
+
+                                <label className="flex items-center justify-between bg-[#05050f] border border-white/10 rounded-xl px-4 py-3 cursor-pointer sm:col-span-2">
+                                    <div>
+                                        <p className="text-sm text-white font-medium">Auto-refresh screenshot after successful deploy</p>
+                                        <p className="text-xs text-slate-400 mt-1">Capture latest production preview automatically.</p>
+                                    </div>
+                                    <input
+                                        type="checkbox"
+                                        checked={deploymentPreferences.autoRefreshScreenshot}
+                                        onChange={(e) => updateDeploymentPreferences({ autoRefreshScreenshot: e.target.checked })}
+                                        className="h-4 w-4 rounded border-white/20 bg-transparent accent-indigo-500"
+                                    />
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Data & Privacy */}
+                    <div className="p-8 flex flex-col md:flex-row gap-8 items-start">
+                        <div className="w-full md:w-1/3 space-y-2">
+                            <h3 className="text-lg font-semibold text-white">Data & Privacy</h3>
+                            <p className="text-sm text-slate-400">Review and export your local account preferences and profile metadata.</p>
+                        </div>
+
+                        <div className="w-full md:w-2/3 bg-white/5 border border-white/10 rounded-xl p-6 space-y-4">
+                            <div className="bg-[#05050f] border border-white/10 rounded-xl p-4">
+                                <p className="text-sm font-semibold text-white mb-2 flex items-center gap-2"><Sparkles className="w-4 h-4 text-indigo-300" /> Account Data Export</p>
+                                <p className="text-xs text-slate-400">Downloads a JSON snapshot with account profile, session metadata, and local preference flags.</p>
+                            </div>
+
+                            <button
+                                onClick={handleExportSettings}
+                                className="bg-white text-black hover:bg-slate-200 px-5 py-2.5 rounded-xl text-sm font-bold transition-all inline-flex items-center gap-2"
+                            >
+                                <Download className="w-4 h-4" />
+                                Export Settings Snapshot
+                            </button>
                         </div>
                     </div>
 

@@ -8,6 +8,9 @@ export interface AuthUser {
     name: string;
     email: string;
     avatar?: string;
+    createdAt?: string;
+    lastLoginAt?: string;
+    loginCount?: number;
     deletionScheduledAt?: string;
 }
 
