@@ -53,6 +53,13 @@ if (REQUEST_HANDLER_PROTOCOL) {
 
 const getDeploymentUrl = (deploymentId: string) => `${requestHandlerProtocol}://${deploymentId}.${requestHandlerHostname}${requestHandlerPort}`;
 
+type ActivityItem = {
+    id: string;
+    title: string;
+    detail: string;
+    tone: "success" | "warning" | "info";
+};
+
 export default function Dashboard() {
     const { user, token, logout } = useAuth();
 
@@ -344,6 +351,63 @@ export default function Dashboard() {
     const deploymentSuccessRate = totalDeployments > 0 ? Math.round((successfulDeployments / totalDeployments) * 100) : 100;
     const githubStatus = githubLinked ? "Connected" : "Disconnected";
     const platformHealth = failedProjects === 0 ? "Healthy" : failedProjects <= 2 ? "Degraded" : "Attention Needed";
+    const latestDeployments = [...deployments]
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 5);
+    const starterChecklist = [
+        {
+            title: "Connect Source",
+            description: "Link GitHub to list repositories and deploy with one click.",
+            action: "Open GitHub tab",
+            onClick: () => setActiveTab("github" as const),
+            icon: Github,
+        },
+        {
+            title: "Define Runtime",
+            description: "Set build command, output directory, and install strategy once.",
+            action: "Open Build Settings",
+            onClick: () => setActiveTab("projects" as const),
+            icon: Wrench,
+        },
+        {
+            title: "Secure Variables",
+            description: "Add API keys and tokens using encrypted environment variables.",
+            action: "Open Support Hub",
+            onClick: () => setActiveTab("support" as const),
+            icon: ShieldCheck,
+        },
+    ];
+    const recentActivity: ActivityItem[] = latestDeployments.length > 0
+        ? latestDeployments.map((deployment) => ({
+            id: deployment._id,
+            title: `${deployment.status === "deployed" ? "Deployment completed" : deployment.status === "failed" ? "Deployment failed" : "Deployment in progress"}`,
+            detail: `${deployment.uploadId.substring(0, 8)} • ${new Date(deployment.createdAt).toLocaleString()}`,
+            tone: deployment.status === "deployed" ? "success" : deployment.status === "failed" ? "warning" : "info",
+        }))
+        : [
+            {
+                id: "seed-1",
+                title: "Workspace initialized",
+                detail: "Create your first deployment to start activity tracking.",
+                tone: "info",
+            },
+            {
+                id: "seed-2",
+                title: "GitHub integration ready",
+                detail: githubLinked ? "Repository sync is connected and ready." : "Connect GitHub from settings to enable repository sync.",
+                tone: githubLinked ? "success" : "warning",
+            },
+            {
+                id: "seed-3",
+                title: "Platform monitoring enabled",
+                detail: "Health, queue, and rollback metrics will appear after first build.",
+                tone: "info",
+            },
+        ];
+
+    const activeRatio = Math.max(8, Math.round((activeProjects / Math.max(projects.length, 1)) * 100));
+    const queueRatio = Math.min(100, Math.max(5, Math.round((inProgressProjects / Math.max(projects.length, 1)) * 100)));
+    const failureRatio = Math.min(100, Math.max(3, Math.round((failedProjects / Math.max(projects.length, 1)) * 100)));
 
     return (
         <div className="min-h-screen bg-[#06060c] text-slate-100 font-sans selection:bg-indigo-500/30">
@@ -471,20 +535,46 @@ export default function Dashboard() {
                                         </div>
 
                                         {projects.length === 0 ? (
-                                            <div className="bg-[#0a0a16] border border-white/10 rounded-2xl p-12 text-center shadow-xl">
-                                                <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                                                    <Rocket className="w-8 h-8 text-slate-500" />
+                                            <div className="space-y-4">
+                                                <div className="bg-[#0a0a16] border border-white/10 rounded-2xl p-12 text-center shadow-xl">
+                                                    <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                                        <Rocket className="w-8 h-8 text-slate-500" />
+                                                    </div>
+                                                    <h3 className="text-lg font-bold text-white mb-2">No projects yet</h3>
+                                                    <p className="text-slate-400 mb-6 max-w-sm mx-auto">Import a repository from GitHub or deploy from a public Git URL to get started.</p>
+                                                    <button onClick={() => setActiveTab("github")} className="bg-white/10 hover:bg-white/20 text-white px-6 py-2.5 rounded-xl text-sm font-medium transition-all border border-white/10">
+                                                        Deploy Project
+                                                    </button>
                                                 </div>
-                                                <h3 className="text-lg font-bold text-white mb-2">No projects yet</h3>
-                                                <p className="text-slate-400 mb-6 max-w-sm mx-auto">Import a repository from GitHub or deploy from a public Git URL to get started.</p>
-                                                <button onClick={() => setActiveTab("github")} className="bg-white/10 hover:bg-white/20 text-white px-6 py-2.5 rounded-xl text-sm font-medium transition-all border border-white/10">
-                                                    Deploy Project
-                                                </button>
+
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                    {starterChecklist.map((item) => {
+                                                        const Icon = item.icon;
+                                                        return (
+                                                            <button
+                                                                key={item.title}
+                                                                onClick={item.onClick}
+                                                                className="text-left bg-[#0a0a16]/70 border border-white/10 rounded-2xl p-5 hover:border-indigo-500/40 hover:bg-white/[0.02] transition-colors"
+                                                            >
+                                                                <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mb-4">
+                                                                    <Icon className="w-5 h-5 text-indigo-300" />
+                                                                </div>
+                                                                <p className="text-sm font-semibold text-white mb-2">{item.title}</p>
+                                                                <p className="text-xs text-slate-400 mb-4 leading-relaxed">{item.description}</p>
+                                                                <div className="text-xs text-indigo-300 font-medium inline-flex items-center gap-1">
+                                                                    {item.action}
+                                                                    <ArrowRight className="w-3.5 h-3.5" />
+                                                                </div>
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
                                             </div>
                                         ) : (
-                                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                                {projects.filter(p => p.name.toLowerCase().includes(searchProject.toLowerCase())).map(p => (
-                                                    <div key={p._id} className="bg-[#0a0a16]/80 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden hover:border-indigo-500/50 transition-all group shadow-lg">
+                                            <>
+                                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                                    {projects.filter(p => p.name.toLowerCase().includes(searchProject.toLowerCase())).map(p => (
+                                                        <div key={p._id} className="bg-[#0a0a16]/80 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden hover:border-indigo-500/50 transition-all group shadow-lg">
                                                         {/* ── Screenshot / Preview Thumbnail ── */}
                                                         <div className="relative h-36 bg-gradient-to-br from-indigo-950/80 via-violet-950/60 to-slate-900">
                                                             {p.activeDeploymentId && p.status === "deployed" && (
@@ -603,9 +693,35 @@ export default function Dashboard() {
                                                             )}
                                                         </div>
                                                         </div>{/* ── content padding wrapper close ── */}
+                                                        </div>
+                                                    ))}
+                                                </div>
+
+                                                <div className="bg-[#0a0a16]/80 border border-white/10 rounded-2xl p-5">
+                                                    <div className="flex items-center justify-between mb-4">
+                                                        <h3 className="text-white font-semibold">Recent Project Activity</h3>
+                                                        <button
+                                                            onClick={() => selectedProjectId ? loadDeployments(selectedProjectId) : setActiveTab("deployments")}
+                                                            className="text-xs text-indigo-300 hover:text-indigo-200"
+                                                        >
+                                                            View deployment history
+                                                        </button>
                                                     </div>
-                                                ))}
-                                            </div>
+                                                    <div className="space-y-2">
+                                                        {recentActivity.map((item) => (
+                                                            <div key={item.id} className="flex items-center justify-between bg-white/5 border border-white/10 rounded-xl px-4 py-3">
+                                                                <div>
+                                                                    <p className="text-sm text-white font-medium">{item.title}</p>
+                                                                    <p className="text-xs text-slate-400 mt-0.5">{item.detail}</p>
+                                                                </div>
+                                                                <span className={`text-[11px] uppercase tracking-wide px-2 py-1 rounded-md border ${item.tone === "success" ? "text-emerald-300 border-emerald-500/30 bg-emerald-500/10" : item.tone === "warning" ? "text-amber-300 border-amber-500/30 bg-amber-500/10" : "text-sky-300 border-sky-500/30 bg-sky-500/10"}`}>
+                                                                    {item.tone}
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </>
                                         )}
                                     </>
                                 )}
@@ -867,6 +983,58 @@ export default function Dashboard() {
                                                 </div>
                                             </div>
                                         </div>
+
+                                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                                            <div className="bg-[#0a0a16]/80 border border-white/10 rounded-2xl p-5 lg:col-span-2">
+                                                <h3 className="text-white font-semibold mb-4">Recent Platform Activity</h3>
+                                                <div className="space-y-2">
+                                                    {recentActivity.map((item) => (
+                                                        <div key={`services-${item.id}`} className="flex items-center justify-between bg-white/5 border border-white/10 rounded-xl px-4 py-3">
+                                                            <div>
+                                                                <p className="text-sm text-white font-medium">{item.title}</p>
+                                                                <p className="text-xs text-slate-400 mt-0.5">{item.detail}</p>
+                                                            </div>
+                                                            <span className={`text-[11px] uppercase tracking-wide px-2 py-1 rounded-md border ${item.tone === "success" ? "text-emerald-300 border-emerald-500/30 bg-emerald-500/10" : item.tone === "warning" ? "text-amber-300 border-amber-500/30 bg-amber-500/10" : "text-sky-300 border-sky-500/30 bg-sky-500/10"}`}>
+                                                                {item.tone}
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            <div className="bg-[#0a0a16]/80 border border-white/10 rounded-2xl p-5">
+                                                <h3 className="text-white font-semibold mb-4">Capacity Snapshot</h3>
+                                                <div className="space-y-4">
+                                                    <div>
+                                                        <div className="flex items-center justify-between text-xs text-slate-400 mb-1.5">
+                                                            <span>Serving Traffic</span>
+                                                            <span>{activeRatio}%</span>
+                                                        </div>
+                                                        <div className="h-2 rounded-full bg-white/5 overflow-hidden">
+                                                            <div className="h-full bg-emerald-400/70" style={{ width: `${activeRatio}%` }} />
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <div className="flex items-center justify-between text-xs text-slate-400 mb-1.5">
+                                                            <span>Build Queue Pressure</span>
+                                                            <span>{queueRatio}%</span>
+                                                        </div>
+                                                        <div className="h-2 rounded-full bg-white/5 overflow-hidden">
+                                                            <div className="h-full bg-amber-400/70" style={{ width: `${queueRatio}%` }} />
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <div className="flex items-center justify-between text-xs text-slate-400 mb-1.5">
+                                                            <span>Failure Risk</span>
+                                                            <span>{failureRatio}%</span>
+                                                        </div>
+                                                        <div className="h-2 rounded-full bg-white/5 overflow-hidden">
+                                                            <div className="h-full bg-rose-400/70" style={{ width: `${failureRatio}%` }} />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
 
@@ -954,6 +1122,42 @@ export default function Dashboard() {
                                                 <div className="border border-white/10 bg-white/5 rounded-xl p-4">
                                                     <p className="text-sm font-semibold text-white flex items-center gap-2"><BookOpen className="w-4 h-4 text-indigo-300" /> Knowledge Base</p>
                                                     <p className="text-xs text-slate-400 mt-2">Standard playbooks for common deployment, DNS, and rollback workflows.</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                            <div className="bg-[#0a0a16]/80 border border-white/10 rounded-2xl p-5">
+                                                <h3 className="text-white font-semibold mb-4">Guided Runbooks</h3>
+                                                <div className="space-y-2">
+                                                    {[
+                                                        "Fix failed build due to missing dependencies",
+                                                        "Rollback production after regression",
+                                                        "Add secure environment variables",
+                                                        "Reconnect GitHub OAuth integration",
+                                                    ].map((runbook) => (
+                                                        <div key={runbook} className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200">
+                                                            {runbook}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            <div className="bg-[#0a0a16]/80 border border-white/10 rounded-2xl p-5">
+                                                <h3 className="text-white font-semibold mb-4">Escalation Contacts</h3>
+                                                <div className="space-y-3">
+                                                    <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                                                        <p className="text-sm text-white font-medium">Platform Operations</p>
+                                                        <p className="text-xs text-slate-400 mt-1">Use for global outage, prolonged build queue, or CDN issues.</p>
+                                                    </div>
+                                                    <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                                                        <p className="text-sm text-white font-medium">Security Response</p>
+                                                        <p className="text-xs text-slate-400 mt-1">Use for credential leaks, unauthorized access, or token rotation support.</p>
+                                                    </div>
+                                                    <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                                                        <p className="text-sm text-white font-medium">Developer Success</p>
+                                                        <p className="text-xs text-slate-400 mt-1">Use for deployment migration, framework setup, and best-practice guidance.</p>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
