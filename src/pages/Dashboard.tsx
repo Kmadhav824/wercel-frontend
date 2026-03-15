@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import EnvVarsModal from "../components/EnvVarsModal";
 import BuildSettingsModal from "../components/BuildSettingsModal";
+import DeployRepoModal from "../components/DeployRepoModal";
 import { Rocket, Github, Server, CheckCircle2, Loader2, ArrowRight, Settings as SettingsIcon, LogOut, Clock, RotateCcw, Trash2, Search, Sliders, Wrench, Terminal, X, Camera, LifeBuoy, BookOpen, MessageSquare, ShieldCheck, Activity, BadgeCheck, GaugeCircle, RefreshCcw } from "lucide-react";
 
 const BACKEND_UPLOAD_URL = import.meta.env.VITE_BACKEND_UPLOAD_URL || "http://localhost:3000";
@@ -77,6 +78,7 @@ export default function Dashboard() {
     const [searchRepo, setSearchRepo] = useState("");
     const [envVarsModalProject, setEnvVarsModalProject] = useState<any | null>(null);
     const [buildSettingsModalProject, setBuildSettingsModalProject] = useState<any | null>(null);
+    const [deployRepoModalRepo, setDeployRepoModalRepo] = useState<any | null>(null);
     const [logsDeployment, setLogsDeployment] = useState<any | null>(null);
     const [liveLogs, setLiveLogs] = useState<string[]>([]);
     const [logsStatus, setLogsStatus] = useState<"idle" | "connecting" | "streaming" | "ended" | "error">("idle");
@@ -194,25 +196,21 @@ export default function Dashboard() {
         }
     };
 
-    const handleDeployGithub = async (repo: any) => {
-        setDeployingRepo(repo.id);
-        try {
-            const res = await axios.post(`${AUTH_URL}/auth/projects`, {
-                name: repo.name,
-                repoUrl: repo.cloneUrl || repo.url
-            }, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+    const handleOpenDeployRepo = (repo: any) => {
+        setDeployingRepo(String(repo.id));
+        setDeployRepoModalRepo(repo);
+    };
 
-            // Redirect to deployments tab instantly to see progress
-            await loadProjects();
-            loadDeployments(res.data.project._id);
-        } catch (err: any) {
-            const message = err?.response?.data?.error || "Error deploying repository";
-            toast.error(message);
-        } finally {
-            setDeployingRepo(null);
-        }
+    const handleRepoDeployStarted = async (projectId: string) => {
+        setDeployRepoModalRepo(null);
+        setDeployingRepo(null);
+        await loadProjects();
+        loadDeployments(projectId);
+    };
+
+    const handleRedeployProject = async (projectId: string) => {
+        await loadProjects();
+        loadDeployments(projectId);
     };
 
     const handleRollback = async (deploymentId: string, uploadId: string) => {
@@ -642,6 +640,10 @@ export default function Dashboard() {
                                                                 <Wrench className="w-3.5 h-3.5" />
                                                                 <span className="capitalize">{p.framework || "unknown"}</span>
                                                             </div>
+                                                            <div className="flex items-center gap-2 text-xs text-slate-500">
+                                                                <Server className="w-3.5 h-3.5" />
+                                                                <span className="font-mono">Root: {p.rootDirectory || "."}</span>
+                                                            </div>
                                                         </div>
 
                                                         <div className="flex gap-2">
@@ -876,11 +878,11 @@ export default function Dashboard() {
                                                                 <p className="text-xs text-slate-500 mb-5 font-mono truncate">{repo.full_name}</p>
 
                                                                 <button
-                                                                    onClick={() => handleDeployGithub(repo)}
-                                                                    disabled={deployingRepo === repo.id}
+                                                                    onClick={() => handleOpenDeployRepo(repo)}
+                                                                    disabled={deployingRepo === String(repo.id)}
                                                                     className="w-full bg-white/5 hover:bg-indigo-500/20 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-all border border-white/10 hover:border-indigo-500/30 flex items-center justify-center gap-2 group-hover:bg-indigo-500 group-hover:border-indigo-500 group-hover:shadow-[0_0_20px_rgba(99,102,241,0.3)] disabled:opacity-50 disabled:pointer-events-none"
                                                                 >
-                                                                    {deployingRepo === repo.id ? (
+                                                                    {deployingRepo === String(repo.id) ? (
                                                                         <><Loader2 className="w-4 h-4 animate-spin" /> Deploying...</>
                                                                     ) : (
                                                                         <>Deploy <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" /></>
@@ -1179,6 +1181,18 @@ export default function Dashboard() {
                     project={buildSettingsModalProject}
                     onClose={() => setBuildSettingsModalProject(null)}
                     onSaved={loadProjects}
+                    onRedeployed={handleRedeployProject}
+                />
+            )}
+
+            {deployRepoModalRepo && (
+                <DeployRepoModal
+                    repo={deployRepoModalRepo}
+                    onClose={() => {
+                        setDeployRepoModalRepo(null);
+                        setDeployingRepo(null);
+                    }}
+                    onDeployed={handleRepoDeployStarted}
                 />
             )}
 

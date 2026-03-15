@@ -1,7 +1,7 @@
 import { useState } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { X, Loader2, Save } from "lucide-react";
+import { X, Loader2, Save, Rocket } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 
 const AUTH_URL = import.meta.env.VITE_AUTH_URL || "http://localhost:4000";
@@ -10,39 +10,56 @@ interface BuildSettingsModalProps {
     project: any;
     onClose: () => void;
     onSaved: () => void;
+    onRedeployed: (projectId: string) => void;
 }
 
-export default function BuildSettingsModal({ project, onClose, onSaved }: BuildSettingsModalProps) {
+export default function BuildSettingsModal({ project, onClose, onSaved, onRedeployed }: BuildSettingsModalProps) {
     const { token } = useAuth();
 
+    const [rootDirectory, setRootDirectory] = useState(project.rootDirectory || ".");
     const [installCommand, setInstallCommand] = useState(project.installCommand || "npm install --legacy-peer-deps");
     const [buildCommand, setBuildCommand] = useState(project.buildCommand || "npm run build");
     const [outputDirectory, setOutputDirectory] = useState(project.outputDirectory || "dist");
-    const [saving, setSaving] = useState(false);
+    const [saving, setSaving] = useState<"idle" | "saving" | "redeploying">("idle");
 
-    const handleSave = async () => {
-        if (!installCommand.trim() || !buildCommand.trim() || !outputDirectory.trim()) {
+    const persistSettings = async () => {
+        await axios.put(`${AUTH_URL}/auth/projects/${project._id}/build-settings`, {
+            rootDirectory: rootDirectory.trim(),
+            installCommand: installCommand.trim(),
+            buildCommand: buildCommand.trim(),
+            outputDirectory: outputDirectory.trim(),
+        }, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+    };
+
+    const handleSave = async (redeploy = false) => {
+        if (!rootDirectory.trim() || !installCommand.trim() || !buildCommand.trim() || !outputDirectory.trim()) {
             toast.error("All fields are required");
             return;
         }
 
-        setSaving(true);
+        setSaving(redeploy ? "redeploying" : "saving");
         try {
-            await axios.put(`${AUTH_URL}/auth/projects/${project._id}/build-settings`, {
-                installCommand: installCommand.trim(),
-                buildCommand: buildCommand.trim(),
-                outputDirectory: outputDirectory.trim(),
-            }, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            await persistSettings();
 
-            toast.success("Build settings saved successfully");
-            onSaved();
+            if (redeploy) {
+                await axios.post(`${AUTH_URL}/auth/projects/${project._id}/redeploy`, {}, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                toast.success("Settings saved and redeploy started");
+                onSaved();
+                onRedeployed(project._id);
+            } else {
+                toast.success("Build settings saved successfully");
+                onSaved();
+            }
             onClose();
-        } catch {
-            toast.error("Failed to save build settings");
+        } catch (err: any) {
+            const message = err?.response?.data?.error || (redeploy ? "Failed to save settings and redeploy" : "Failed to save build settings");
+            toast.error(message);
         } finally {
-            setSaving(false);
+            setSaving("idle");
         }
     };
 
@@ -67,6 +84,17 @@ export default function BuildSettingsModal({ project, onClose, onSaved }: BuildS
                         <div className="px-3 py-2.5 rounded-lg border border-white/10 bg-[#05050f] text-slate-300 text-sm capitalize">
                             {project.framework || "unknown"}
                         </div>
+                    </div>
+
+                    <div className="space-y-1">
+                        <label className="text-xs uppercase tracking-wider text-slate-400 font-semibold">Root Directory</label>
+                        <input
+                            value={rootDirectory}
+                            onChange={(e) => setRootDirectory(e.target.value)}
+                            placeholder="apps/web"
+                            className="w-full bg-[#05050f] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 font-mono transition-colors"
+                        />
+                        <p className="text-xs text-slate-500">Use <span className="font-mono">.</span> for repo root.</p>
                     </div>
 
                     <div className="space-y-1">
@@ -106,12 +134,20 @@ export default function BuildSettingsModal({ project, onClose, onSaved }: BuildS
                         Cancel
                     </button>
                     <button
-                        onClick={handleSave}
-                        disabled={saving}
+                        onClick={() => handleSave()}
+                        disabled={saving !== "idle"}
                         className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white px-5 py-2 rounded-xl text-sm font-semibold transition-all shadow-[0_0_15px_rgba(99,102,241,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                        {saving === "saving" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                         Save Changes
+                    </button>
+                    <button
+                        onClick={() => handleSave(true)}
+                        disabled={saving !== "idle"}
+                        className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2 rounded-xl text-sm font-semibold transition-all shadow-[0_0_15px_rgba(16,185,129,0.25)] disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {saving === "redeploying" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Rocket className="w-4 h-4" />}
+                        Save & Redeploy
                     </button>
                 </div>
             </div>
