@@ -641,6 +641,10 @@ export default function Dashboard() {
                                                                 <span className="capitalize">{p.framework || "unknown"}</span>
                                                             </div>
                                                             <div className="flex items-center gap-2 text-xs text-slate-500">
+                                                                <Github className="w-3.5 h-3.5" />
+                                                                <span className="font-mono">Branch: {p.branch || "default"}</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-2 text-xs text-slate-500">
                                                                 <Server className="w-3.5 h-3.5" />
                                                                 <span className="font-mono">Root: {p.rootDirectory || "."}</span>
                                                             </div>

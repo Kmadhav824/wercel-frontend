@@ -12,10 +12,12 @@ interface RepoSummary {
     fullName?: string;
     cloneUrl?: string;
     url?: string;
+    defaultBranch?: string;
 }
 
 interface BuildSettings {
     framework: string;
+    branch: string;
     rootDirectory: string;
     installCommand: string;
     buildCommand: string;
@@ -31,6 +33,7 @@ interface DeployRepoModalProps {
 
 const DEFAULT_BUILD_SETTINGS: BuildSettings = {
     framework: "unknown",
+    branch: "",
     rootDirectory: ".",
     installCommand: "npm install --legacy-peer-deps",
     buildCommand: "npm run build",
@@ -40,12 +43,47 @@ const DEFAULT_BUILD_SETTINGS: BuildSettings = {
 
 export default function DeployRepoModal({ repo, onClose, onDeployed }: DeployRepoModalProps) {
     const { token } = useAuth();
-    const [settings, setSettings] = useState<BuildSettings>(DEFAULT_BUILD_SETTINGS);
+    const [settings, setSettings] = useState<BuildSettings>({
+        ...DEFAULT_BUILD_SETTINGS,
+        branch: repo.defaultBranch || "",
+    });
     const [loading, setLoading] = useState(true);
     const [deploying, setDeploying] = useState(false);
     const [detecting, setDetecting] = useState(false);
+    const [branches, setBranches] = useState<string[]>([]);
+    const [branchesLoading, setBranchesLoading] = useState(false);
 
     const repoUrl = repo.cloneUrl || repo.url || "";
+
+    const loadBranches = async () => {
+        if (!token || !repoUrl) {
+            return;
+        }
+
+        setBranchesLoading(true);
+        try {
+            const res = await axios.get(`${AUTH_URL}/auth/github/branches`, {
+                params: { repoUrl },
+                headers: { Authorization: `Bearer ${token}` },
+            });
+
+            const fetchedBranches = Array.isArray(res.data.branches) ? res.data.branches : [];
+            setBranches(fetchedBranches);
+            if (!settings.branch && fetchedBranches.length > 0) {
+                setSettings((prev) => ({
+                    ...prev,
+                    branch: prev.branch || repo.defaultBranch || fetchedBranches[0] || "",
+                }));
+            }
+        } catch (err: any) {
+            const message = err?.response?.data?.error;
+            if (message) {
+                toast.error(message);
+            }
+        } finally {
+            setBranchesLoading(false);
+        }
+    };
 
     const detectBuildSettings = async (rootDirectoryOverride?: string) => {
         if (!token || !repoUrl) {
@@ -56,6 +94,7 @@ export default function DeployRepoModal({ repo, onClose, onDeployed }: DeployRep
         try {
             const res = await axios.post(`${AUTH_URL}/auth/projects/detect-build-settings`, {
                 repoUrl,
+                branch: settings.branch.trim(),
                 rootDirectory: rootDirectoryOverride ?? settings.rootDirectory,
             }, {
                 headers: { Authorization: `Bearer ${token}` },
@@ -75,6 +114,7 @@ export default function DeployRepoModal({ repo, onClose, onDeployed }: DeployRep
     };
 
     useEffect(() => {
+        void loadBranches();
         void detectBuildSettings(".");
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [repoUrl, token]);
@@ -90,6 +130,7 @@ export default function DeployRepoModal({ repo, onClose, onDeployed }: DeployRep
             const res = await axios.post(`${AUTH_URL}/auth/projects`, {
                 name: repo.name,
                 repoUrl,
+                branch: settings.branch.trim(),
                 rootDirectory: settings.rootDirectory.trim(),
                 installCommand: settings.installCommand.trim(),
                 buildCommand: settings.buildCommand.trim(),
@@ -136,6 +177,34 @@ export default function DeployRepoModal({ repo, onClose, onDeployed }: DeployRep
                                 <div className="px-3 py-2.5 rounded-lg border border-white/10 bg-[#05050f] text-slate-300 text-sm capitalize">
                                     {settings.framework || "unknown"}
                                 </div>
+                            </div>
+
+                            <div className="space-y-1">
+                                <label className="text-xs uppercase tracking-wider text-slate-400 font-semibold">Branch</label>
+                                <div className="space-y-2">
+                                    <select
+                                        value={settings.branch}
+                                        onChange={(e) => setSettings((prev) => ({ ...prev, branch: e.target.value }))}
+                                        className="w-full bg-[#05050f] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 font-mono transition-colors"
+                                        disabled={branchesLoading}
+                                    >
+                                        <option value="">{repo.defaultBranch ? `Default (${repo.defaultBranch})` : "Repository default"}</option>
+                                        {branches.map((branchName) => (
+                                            <option key={branchName} value={branchName}>
+                                                {branchName}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <input
+                                        value={settings.branch}
+                                        onChange={(e) => setSettings((prev) => ({ ...prev, branch: e.target.value }))}
+                                        placeholder={repo.defaultBranch || "main"}
+                                        className="w-full bg-[#05050f] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 font-mono transition-colors"
+                                    />
+                                </div>
+                                <p className="text-xs text-slate-500">
+                                    {branchesLoading ? "Loading branches from GitHub..." : "Pick a detected branch or type a custom branch name."}
+                                </p>
                             </div>
 
                             <div className="space-y-1">

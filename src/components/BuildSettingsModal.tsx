@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { X, Loader2, Save, Rocket } from "lucide-react";
@@ -16,14 +16,44 @@ interface BuildSettingsModalProps {
 export default function BuildSettingsModal({ project, onClose, onSaved, onRedeployed }: BuildSettingsModalProps) {
     const { token } = useAuth();
 
+    const [branch, setBranch] = useState(project.branch || "");
     const [rootDirectory, setRootDirectory] = useState(project.rootDirectory || ".");
     const [installCommand, setInstallCommand] = useState(project.installCommand || "npm install --legacy-peer-deps");
     const [buildCommand, setBuildCommand] = useState(project.buildCommand || "npm run build");
     const [outputDirectory, setOutputDirectory] = useState(project.outputDirectory || "dist");
     const [saving, setSaving] = useState<"idle" | "saving" | "redeploying">("idle");
+    const [branches, setBranches] = useState<string[]>([]);
+    const [branchesLoading, setBranchesLoading] = useState(false);
+
+    useEffect(() => {
+        const loadBranches = async () => {
+            if (!token || !project.repoUrl) {
+                return;
+            }
+
+            setBranchesLoading(true);
+            try {
+                const res = await axios.get(`${AUTH_URL}/auth/github/branches`, {
+                    params: { repoUrl: project.repoUrl },
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                setBranches(Array.isArray(res.data.branches) ? res.data.branches : []);
+            } catch (err: any) {
+                const message = err?.response?.data?.error;
+                if (message) {
+                    toast.error(message);
+                }
+            } finally {
+                setBranchesLoading(false);
+            }
+        };
+
+        void loadBranches();
+    }, [project.repoUrl, token]);
 
     const persistSettings = async () => {
         await axios.put(`${AUTH_URL}/auth/projects/${project._id}/build-settings`, {
+            branch: branch.trim(),
             rootDirectory: rootDirectory.trim(),
             installCommand: installCommand.trim(),
             buildCommand: buildCommand.trim(),
@@ -84,6 +114,34 @@ export default function BuildSettingsModal({ project, onClose, onSaved, onRedepl
                         <div className="px-3 py-2.5 rounded-lg border border-white/10 bg-[#05050f] text-slate-300 text-sm capitalize">
                             {project.framework || "unknown"}
                         </div>
+                    </div>
+
+                    <div className="space-y-1">
+                        <label className="text-xs uppercase tracking-wider text-slate-400 font-semibold">Branch</label>
+                        <div className="space-y-2">
+                            <select
+                                value={branch}
+                                onChange={(e) => setBranch(e.target.value)}
+                                className="w-full bg-[#05050f] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 font-mono transition-colors"
+                                disabled={branchesLoading}
+                            >
+                                <option value="">Repository default</option>
+                                {branches.map((branchName) => (
+                                    <option key={branchName} value={branchName}>
+                                        {branchName}
+                                    </option>
+                                ))}
+                            </select>
+                            <input
+                                value={branch}
+                                onChange={(e) => setBranch(e.target.value)}
+                                placeholder="main"
+                                className="w-full bg-[#05050f] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 font-mono transition-colors"
+                            />
+                        </div>
+                        <p className="text-xs text-slate-500">
+                            {branchesLoading ? "Loading branches from GitHub..." : "Pick a detected branch or type a custom branch name."}
+                        </p>
                     </div>
 
                     <div className="space-y-1">
