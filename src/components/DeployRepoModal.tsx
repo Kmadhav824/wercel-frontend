@@ -17,6 +17,7 @@ interface RepoSummary {
 
 interface BuildSettings {
     framework: string;
+    frameworkPreset: "auto" | "vite" | "cra" | "vue" | "static" | "custom";
     branch: string;
     rootDirectory: string;
     installCommand: string;
@@ -33,6 +34,7 @@ interface DeployRepoModalProps {
 
 const DEFAULT_BUILD_SETTINGS: BuildSettings = {
     framework: "unknown",
+    frameworkPreset: "auto",
     branch: "",
     rootDirectory: ".",
     installCommand: "npm install --legacy-peer-deps",
@@ -40,6 +42,26 @@ const DEFAULT_BUILD_SETTINGS: BuildSettings = {
     outputDirectory: "dist",
     hasBuildScript: false,
 };
+
+const STATIC_SITE_BUILD_COMMAND = "rm -rf dist && mkdir -p dist && find . -mindepth 1 -maxdepth 1 ! -name dist ! -name build ! -name node_modules ! -name .git ! -name .nexus-static-dist -exec cp -R {} dist/ \\;";
+
+function getPresetDefaults(frameworkPreset: BuildSettings["frameworkPreset"]) {
+    switch (frameworkPreset) {
+        case "vite":
+            return { framework: "vite", installCommand: "npm install --legacy-peer-deps", buildCommand: "npm run build", outputDirectory: "dist" };
+        case "cra":
+            return { framework: "cra", installCommand: "npm install --legacy-peer-deps", buildCommand: "npm run build", outputDirectory: "build" };
+        case "vue":
+            return { framework: "vue", installCommand: "npm install --legacy-peer-deps", buildCommand: "npm run build", outputDirectory: "dist" };
+        case "static":
+            return { framework: "static", installCommand: "true", buildCommand: STATIC_SITE_BUILD_COMMAND, outputDirectory: "dist" };
+        case "custom":
+            return { framework: "unknown", installCommand: "npm install --legacy-peer-deps", buildCommand: "npm run build", outputDirectory: "dist" };
+        case "auto":
+        default:
+            return null;
+    }
+}
 
 export default function DeployRepoModal({ repo, onClose, onDeployed }: DeployRepoModalProps) {
     const { token } = useAuth();
@@ -85,7 +107,7 @@ export default function DeployRepoModal({ repo, onClose, onDeployed }: DeployRep
         }
     };
 
-    const detectBuildSettings = async (rootDirectoryOverride?: string) => {
+    const detectBuildSettings = async (rootDirectoryOverride?: string, frameworkPresetOverride?: BuildSettings["frameworkPreset"]) => {
         if (!token || !repoUrl) {
             return;
         }
@@ -94,6 +116,7 @@ export default function DeployRepoModal({ repo, onClose, onDeployed }: DeployRep
         try {
             const res = await axios.post(`${AUTH_URL}/auth/projects/detect-build-settings`, {
                 repoUrl,
+                frameworkPreset: frameworkPresetOverride ?? settings.frameworkPreset,
                 branch: settings.branch.trim(),
                 rootDirectory: rootDirectoryOverride ?? settings.rootDirectory,
             }, {
@@ -130,6 +153,7 @@ export default function DeployRepoModal({ repo, onClose, onDeployed }: DeployRep
             const res = await axios.post(`${AUTH_URL}/auth/projects`, {
                 name: repo.name,
                 repoUrl,
+                frameworkPreset: settings.frameworkPreset,
                 branch: settings.branch.trim(),
                 rootDirectory: settings.rootDirectory.trim(),
                 installCommand: settings.installCommand.trim(),
@@ -172,6 +196,39 @@ export default function DeployRepoModal({ repo, onClose, onDeployed }: DeployRep
                         </div>
                     ) : (
                         <>
+                            <div className="space-y-1">
+                                <label className="text-xs uppercase tracking-wider text-slate-400 font-semibold">Framework Preset</label>
+                                <select
+                                    value={settings.frameworkPreset}
+                                    onChange={(e) => {
+                                        const nextPreset = e.target.value as BuildSettings["frameworkPreset"];
+                                        const presetDefaults = getPresetDefaults(nextPreset);
+                                        if (!presetDefaults) {
+                                            setSettings((prev) => ({ ...prev, frameworkPreset: nextPreset }));
+                                            void detectBuildSettings(settings.rootDirectory.trim() || ".", nextPreset);
+                                            return;
+                                        }
+
+                                        setSettings((prev) => ({
+                                            ...prev,
+                                            frameworkPreset: nextPreset,
+                                            framework: presetDefaults.framework,
+                                            installCommand: presetDefaults.installCommand,
+                                            buildCommand: presetDefaults.buildCommand,
+                                            outputDirectory: presetDefaults.outputDirectory,
+                                        }));
+                                    }}
+                                    className="w-full bg-[#05050f] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                                >
+                                    <option value="auto">Auto Detect</option>
+                                    <option value="vite">Vite</option>
+                                    <option value="cra">Create React App</option>
+                                    <option value="vue">Vue</option>
+                                    <option value="static">Static HTML/CSS/JS</option>
+                                    <option value="custom">Custom</option>
+                                </select>
+                            </div>
+
                             <div className="space-y-1">
                                 <label className="text-xs uppercase tracking-wider text-slate-400 font-semibold">Detected Framework</label>
                                 <div className="px-3 py-2.5 rounded-lg border border-white/10 bg-[#05050f] text-slate-300 text-sm capitalize">
