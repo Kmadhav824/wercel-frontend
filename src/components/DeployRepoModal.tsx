@@ -17,13 +17,14 @@ interface RepoSummary {
 
 interface BuildSettings {
     framework: string;
-    frameworkPreset: "auto" | "vite" | "cra" | "vue" | "static" | "custom";
+    frameworkPreset: "auto" | "vite" | "cra" | "vue" | "static" | "nextjs-static" | "custom";
     branch: string;
     rootDirectory: string;
     installCommand: string;
     buildCommand: string;
     outputDirectory: string;
     hasBuildScript: boolean;
+    warning?: string;
 }
 
 interface DeployRepoModalProps {
@@ -55,6 +56,8 @@ function getPresetDefaults(frameworkPreset: BuildSettings["frameworkPreset"]) {
             return { framework: "vue", installCommand: "npm install --legacy-peer-deps", buildCommand: "npm run build", outputDirectory: "dist" };
         case "static":
             return { framework: "static", installCommand: "true", buildCommand: STATIC_SITE_BUILD_COMMAND, outputDirectory: "dist" };
+        case "nextjs-static":
+            return { framework: "nextjs", installCommand: "npm install --legacy-peer-deps", buildCommand: "npm run build", outputDirectory: "out" };
         case "custom":
             return { framework: "unknown", installCommand: "npm install --legacy-peer-deps", buildCommand: "npm run build", outputDirectory: "dist" };
         case "auto":
@@ -216,6 +219,9 @@ export default function DeployRepoModal({ repo, onClose, onDeployed }: DeployRep
                                             installCommand: presetDefaults.installCommand,
                                             buildCommand: presetDefaults.buildCommand,
                                             outputDirectory: presetDefaults.outputDirectory,
+                                            warning: nextPreset === "nextjs-static"
+                                                ? "This preset only supports fully static Next.js exports. Your next.config.* must include output: 'export'."
+                                                : undefined,
                                         }));
                                     }}
                                     className="w-full bg-[#05050f] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors"
@@ -225,6 +231,7 @@ export default function DeployRepoModal({ repo, onClose, onDeployed }: DeployRep
                                     <option value="cra">Create React App</option>
                                     <option value="vue">Vue</option>
                                     <option value="static">Static HTML/CSS/JS</option>
+                                    <option value="nextjs-static">Next.js Static Export</option>
                                     <option value="custom">Custom</option>
                                 </select>
                             </div>
@@ -235,6 +242,12 @@ export default function DeployRepoModal({ repo, onClose, onDeployed }: DeployRep
                                     {settings.framework || "unknown"}
                                 </div>
                             </div>
+
+                            {settings.warning && (
+                                <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
+                                    {settings.warning}
+                                </div>
+                            )}
 
                             <div className="space-y-1">
                                 <label className="text-xs uppercase tracking-wider text-slate-400 font-semibold">Branch</label>
