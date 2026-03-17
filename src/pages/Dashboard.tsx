@@ -53,6 +53,7 @@ if (REQUEST_HANDLER_PROTOCOL) {
 }
 
 const getDeploymentUrl = (deploymentId: string) => `${requestHandlerProtocol}://${deploymentId}.${requestHandlerHostname}${requestHandlerPort}`;
+const STATUS_REFRESH_MS = 5000;
 
 type ActivityItem = {
     id: string;
@@ -101,18 +102,33 @@ export default function Dashboard() {
             if (hasBuilding) {
                 interval = setInterval(() => {
                     loadDeployments(selectedProjectId, true); // silent refresh
-                }, 3000);
+                }, STATUS_REFRESH_MS);
             }
         } else if (activeTab === "projects") {
             const hasBuildingProject = projects.some(p => ["queued", "cloning", "building", "deploying"].includes(p.status));
             if (hasBuildingProject) {
                 interval = setInterval(() => {
                     loadProjects(true); // silent refresh
-                }, 3000);
+                }, STATUS_REFRESH_MS);
             }
         }
         return () => clearInterval(interval);
     }, [activeTab, selectedProjectId, deployments, projects]);
+
+    const getQueuedStatusText = (item: any) => {
+        if (item?.status !== "queued") {
+            return null;
+        }
+        const queuePosition = Number(item?.queuePosition);
+        const jobsAhead = Number(item?.jobsAhead);
+        if (Number.isFinite(queuePosition) && queuePosition > 0) {
+            if (Number.isFinite(jobsAhead) && jobsAhead >= 0) {
+                return `Queued #${queuePosition} (${jobsAhead} ahead)`;
+            }
+            return `Queued #${queuePosition}`;
+        }
+        return "Queued";
+    };
 
     useEffect(() => {
         return () => {
@@ -603,7 +619,7 @@ export default function Dashboard() {
                                                                 ) : (
                                                                     <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/25 border border-amber-500/30 text-amber-300 text-[10px] font-bold uppercase tracking-wide backdrop-blur-sm">
                                                                         <Loader2 className="w-2.5 h-2.5 animate-spin" />
-                                                                        {p.status === "cloning" ? "Cloning" : p.status === "building" ? "Building" : p.status === "deploying" ? "Deploying" : "Queued"}
+                                                                        {p.status === "cloning" ? "Cloning" : p.status === "building" ? "Building" : p.status === "deploying" ? "Deploying" : getQueuedStatusText(p)}
                                                                     </span>
                                                                 )}
                                                                 <button
@@ -773,7 +789,7 @@ export default function Dashboard() {
                                                                         ) : d.status === "failed" ? (
                                                                             <span className="text-red-400 flex items-center gap-1.5">Failed</span>
                                                                         ) : (
-                                                                            <span className="text-amber-400 flex items-center gap-1.5"><Loader2 className="w-4 h-4 animate-spin" /> {d.status.charAt(0).toUpperCase() + d.status.slice(1)}</span>
+                                                                            <span className="text-amber-400 flex items-center gap-1.5"><Loader2 className="w-4 h-4 animate-spin" /> {d.status === "queued" ? getQueuedStatusText(d) : d.status.charAt(0).toUpperCase() + d.status.slice(1)}</span>
                                                                         )}
                                                                     </div>
 
