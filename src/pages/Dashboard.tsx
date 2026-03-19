@@ -6,7 +6,8 @@ import { useAuth } from "../contexts/AuthContext";
 import EnvVarsModal from "../components/EnvVarsModal";
 import BuildSettingsModal from "../components/BuildSettingsModal";
 import DeployRepoModal from "../components/DeployRepoModal";
-import { Rocket, Github, Server, CheckCircle2, Loader2, ArrowRight, Settings as SettingsIcon, LogOut, Clock, RotateCcw, Trash2, Search, Sliders, Wrench, Terminal, X, Camera, LifeBuoy, BookOpen, MessageSquare, ShieldCheck, Activity, BadgeCheck, GaugeCircle, RefreshCcw } from "lucide-react";
+import CustomDomainsModal from "../components/CustomDomainsModal";
+import { Rocket, Github, Server, CheckCircle2, Loader2, ArrowRight, Settings as SettingsIcon, LogOut, Clock, RotateCcw, Trash2, Search, Sliders, Wrench, Terminal, X, Camera, LifeBuoy, BookOpen, MessageSquare, ShieldCheck, Activity, BadgeCheck, GaugeCircle, RefreshCcw, Globe2, Crown } from "lucide-react";
 
 const BACKEND_UPLOAD_URL = import.meta.env.VITE_BACKEND_UPLOAD_URL || "http://localhost:3000";
 const AUTH_URL = import.meta.env.VITE_AUTH_URL || "http://localhost:4000";
@@ -79,6 +80,7 @@ export default function Dashboard() {
     const [searchRepo, setSearchRepo] = useState("");
     const [envVarsModalProject, setEnvVarsModalProject] = useState<any | null>(null);
     const [buildSettingsModalProject, setBuildSettingsModalProject] = useState<any | null>(null);
+    const [customDomainsModalProject, setCustomDomainsModalProject] = useState<any | null>(null);
     const [deployRepoModalRepo, setDeployRepoModalRepo] = useState<any | null>(null);
     const [logsDeployment, setLogsDeployment] = useState<any | null>(null);
     const [liveLogs, setLiveLogs] = useState<string[]>([]);
@@ -681,6 +683,14 @@ export default function Dashboard() {
                                                             >
                                                                 <Sliders className="w-5 h-5" />
                                                             </button>
+                                                            <button
+                                                                onClick={() => setCustomDomainsModalProject(p)}
+                                                                className={`flex items-center justify-center gap-1.5 px-3 bg-white/5 hover:bg-white/10 rounded-xl transition-all border ${user?.plan === "pro" ? "border-white/10 text-slate-300 hover:text-white" : "border-amber-500/20 text-amber-300 hover:text-amber-200"}`}
+                                                                title={user?.plan === "pro" ? "Custom Domains" : "Custom Domains (Pro)"}
+                                                            >
+                                                                {user?.plan === "pro" ? <Globe2 className="w-4 h-4" /> : <Crown className="w-4 h-4" />}
+                                                                <span className="text-xs font-semibold">{user?.plan === "pro" ? "Domains" : "Pro"}</span>
+                                                            </button>
                                                             {p.status === "deployed" && p.activeDeploymentId && (
                                                                 <button
                                                                     onClick={() => handleRefreshScreenshot(p.activeDeploymentId)}
@@ -1202,6 +1212,14 @@ export default function Dashboard() {
                     onClose={() => setBuildSettingsModalProject(null)}
                     onSaved={loadProjects}
                     onRedeployed={handleRedeployProject}
+                />
+            )}
+
+            {customDomainsModalProject && (
+                <CustomDomainsModal
+                    project={customDomainsModalProject}
+                    onClose={() => setCustomDomainsModalProject(null)}
+                    onUpdated={loadProjects}
                 />
             )}
 
