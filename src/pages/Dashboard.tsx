@@ -685,11 +685,11 @@ export default function Dashboard() {
                                                             </button>
                                                             <button
                                                                 onClick={() => setCustomDomainsModalProject(p)}
-                                                                className={`flex items-center justify-center gap-1.5 px-3 bg-white/5 hover:bg-white/10 rounded-xl transition-all border ${user?.plan === "pro" ? "border-white/10 text-slate-300 hover:text-white" : "border-amber-500/20 text-amber-300 hover:text-amber-200"}`}
-                                                                title={user?.plan === "pro" ? "Custom Domains" : "Custom Domains (Pro)"}
+                                                                className={`flex items-center justify-center gap-1.5 px-3 bg-white/5 hover:bg-white/10 rounded-xl transition-all border ${user?.plan === "pro" || user?.plan === "enterprise" ? "border-white/10 text-slate-300 hover:text-white" : "border-amber-500/20 text-amber-300 hover:text-amber-200"}`}
+                                                                title={user?.plan === "pro" || user?.plan === "enterprise" ? "Custom Domains" : "Custom Domains (Pro / Enterprise)"}
                                                             >
-                                                                {user?.plan === "pro" ? <Globe2 className="w-4 h-4" /> : <Crown className="w-4 h-4" />}
-                                                                <span className="text-xs font-semibold">{user?.plan === "pro" ? "Domains" : "Pro"}</span>
+                                                                {user?.plan === "pro" || user?.plan === "enterprise" ? <Globe2 className="w-4 h-4" /> : <Crown className="w-4 h-4" />}
+                                                                <span className="text-xs font-semibold">{user?.plan === "pro" || user?.plan === "enterprise" ? "Domains" : "Pro+"}</span>
                                                             </button>
                                                             {p.status === "deployed" && p.activeDeploymentId && (
                                                                 <button

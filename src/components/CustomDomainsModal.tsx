@@ -164,7 +164,7 @@ export default function CustomDomainsModal({ project, onClose, onUpdated }: Cust
         }
     };
 
-    const isPro = user?.plan === "pro";
+    const hasPaidPlan = user?.plan === "pro" || user?.plan === "enterprise";
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -186,14 +186,14 @@ export default function CustomDomainsModal({ project, onClose, onUpdated }: Cust
                         <div className="flex items-center justify-center h-40">
                             <Loader2 className="w-6 h-6 animate-spin text-indigo-400" />
                         </div>
-                    ) : !isPro ? (
+                    ) : !hasPaidPlan ? (
                         <div className="rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-[#0a0a16] to-[#0a0a16] p-6">
                             <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-4">
                                 <Crown className="w-6 h-6 text-amber-300" />
                             </div>
-                            <h3 className="text-white text-lg font-semibold mb-2">Custom domains are a Pro feature</h3>
+                            <h3 className="text-white text-lg font-semibold mb-2">Custom domains are for Pro and Enterprise plans</h3>
                             <p className="text-sm text-slate-300 leading-relaxed">
-                                Upgrade this account to Pro to attach your own domains, complete DNS verification, and track SSL readiness from the dashboard.
+                                Upgrade this account to Pro or Enterprise to attach your own domains, complete DNS verification, and track SSL readiness from the dashboard.
                             </p>
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5">
                                 <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300">

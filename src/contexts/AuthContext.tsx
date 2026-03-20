@@ -8,7 +8,7 @@ export interface AuthUser {
     name: string;
     email: string;
     avatar?: string;
-    plan: "free" | "pro";
+    plan: "free" | "pro" | "enterprise";
     createdAt?: string;
     lastLoginAt?: string;
     loginCount?: number;
