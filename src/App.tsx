@@ -13,6 +13,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import Settings from "./pages/Settings";
+import UpgradePlan from "./pages/UpgradePlan";
 import { ThemeProvider, useTheme } from "./contexts/ThemeContext";
 import "./App.css";
 
@@ -65,6 +66,7 @@ function AppRoutes() {
       {/* Protected routes */}
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+      <Route path="/upgrade" element={<ProtectedRoute><UpgradePlan /></ProtectedRoute>} />
 
       {/* Public: deploy landing page */}
       <Route path="/" element={<Landing />} />

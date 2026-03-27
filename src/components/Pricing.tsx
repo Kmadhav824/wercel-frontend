@@ -103,9 +103,12 @@ export default function Pricing() {
                                 <span className="text-5xl font-black">$20</span>
                                 <span className="text-slate-500 font-medium">/ user / month</span>
                             </div>
-                            <button disabled className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-6 py-4 rounded-full text-base font-bold transition-all opacity-80 cursor-not-allowed border border-white/10">
-                                Payment Integration Coming Soon
-                            </button>
+                            <Link
+                                to={user ? "/upgrade?plan=pro" : "/signup"}
+                                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-6 py-4 rounded-full text-base font-bold transition-all hover:scale-[1.02] active:scale-95 border border-white/10 shadow-lg shadow-indigo-500/20"
+                            >
+                                {user ? "See Pro Details" : "Get Started With Pro"}
+                            </Link>
                             <div className="pt-8 space-y-4">
                                 <p className="text-sm font-bold text-white uppercase tracking-wider">Everything in Hobby, plus</p>
                                 <ul className="space-y-3">
@@ -127,9 +130,12 @@ export default function Pricing() {
                             <div className="flex items-baseline gap-2">
                                 <span className="text-4xl font-black py-1">Custom</span>
                             </div>
-                            <button className="w-full flex items-center justify-center gap-2 bg-white/5 border border-white/10 hover:bg-white/10 text-white px-6 py-4 rounded-full text-base font-bold transition-all hover:scale-105 active:scale-95">
-                                Contact Sales
-                            </button>
+                            <Link
+                                to={user ? "/upgrade?plan=enterprise" : "/signup"}
+                                className="w-full flex items-center justify-center gap-2 bg-white/5 border border-white/10 hover:bg-white/10 text-white px-6 py-4 rounded-full text-base font-bold transition-all hover:scale-105 active:scale-95"
+                            >
+                                {user ? "Talk To Sales" : "Contact Sales"}
+                            </Link>
                             <div className="pt-8 space-y-4">
                                 <p className="text-sm font-bold text-white uppercase tracking-wider">Everything in Pro, plus</p>
                                 <ul className="space-y-3">

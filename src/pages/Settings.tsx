@@ -293,83 +293,8 @@ export default function Settings() {
         }
     };
 
-    const loadRazorpayCheckout = async (): Promise<any> => {
-        const win = window as Window & { Razorpay?: new (options: Record<string, unknown>) => { open: () => void } };
-        if (win.Razorpay) {
-            return win.Razorpay;
-        }
-
-        await new Promise<void>((resolve, reject) => {
-            const existing = document.querySelector('script[data-razorpay-checkout="true"]') as HTMLScriptElement | null;
-            if (existing) {
-                existing.addEventListener("load", () => resolve(), { once: true });
-                existing.addEventListener("error", () => reject(new Error("Failed to load Razorpay Checkout")), { once: true });
-                return;
-            }
-
-            const script = document.createElement("script");
-            script.src = "https://checkout.razorpay.com/v1/checkout.js";
-            script.async = true;
-            script.dataset.razorpayCheckout = "true";
-            script.onload = () => resolve();
-            script.onerror = () => reject(new Error("Failed to load Razorpay Checkout"));
-            document.body.appendChild(script);
-        });
-
-        if (!win.Razorpay) {
-            throw new Error("Razorpay Checkout is unavailable");
-        }
-
-        return win.Razorpay;
-    };
-
-    const handleUpgrade = async (plan: PaidPlan) => {
-        if (!token) return;
-
-        setBillingAction(plan);
-        try {
-            const [{ data }, RazorpayCtor] = await Promise.all([
-                axios.post(`${AUTH_URL}/auth/billing/create-subscription`, { plan }, { headers: authHeaders }),
-                loadRazorpayCheckout(),
-            ]);
-
-            const razorpay = new RazorpayCtor({
-                key: data.keyId,
-                subscription_id: data.checkout.subscriptionId,
-                name: `Nexus ${data.checkout.plan === "enterprise" ? "Enterprise" : "Pro"}`,
-                description: "Secure recurring billing for your Nexus workspace",
-                image: "/favicon.ico",
-                prefill: data.checkout.prefill,
-                notes: {
-                    plan,
-                },
-                theme: {
-                    color: "#6366f1",
-                },
-                modal: {
-                    ondismiss: () => {
-                        toast("Checkout closed. You can resume anytime from Settings.");
-                    },
-                },
-                handler: async (response: { razorpay_subscription_id?: string }) => {
-                    try {
-                        await axios.post(`${AUTH_URL}/auth/billing/sync`, {
-                            subscriptionId: response.razorpay_subscription_id || data.checkout.subscriptionId,
-                        }, { headers: authHeaders });
-                        await Promise.all([loadBilling(), refreshUser()]);
-                        toast.success("Payment authorized. We refreshed your billing status.");
-                    } catch (err: any) {
-                        toast.error(err.response?.data?.error || "Payment captured, but billing sync is still pending webhook confirmation.");
-                    }
-                },
-            });
-
-            razorpay.open();
-        } catch (err: any) {
-            toast.error(err.response?.data?.error || err.message || "Failed to start checkout");
-        } finally {
-            setBillingAction(null);
-        }
+    const handleUpgrade = (plan: PaidPlan) => {
+        navigate(`/upgrade?plan=${plan}`);
     };
 
     const handleSyncBilling = async () => {
@@ -406,7 +331,8 @@ export default function Settings() {
 
     const billingStatus = billing?.billing?.status || user?.billing?.status || "inactive";
     const isPaidPlan = user?.plan === "pro" || user?.plan === "enterprise";
-    const hasActiveSubscription = ["active", "authenticated", "pending", "created"].includes(billingStatus);
+    const hasBlockingSubscription = ["active", "authenticated", "pending"].includes(billingStatus);
+    const canCancelSubscription = isPaidPlan && hasBlockingSubscription;
 
     return (
         <div className="min-h-screen bg-[#06060c] text-white">
@@ -617,7 +543,7 @@ export default function Settings() {
                                         {billingAction === "sync" || billingLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCcw className="w-4 h-4" />}
                                         Refresh
                                     </button>
-                                    {hasActiveSubscription && (
+                                    {canCancelSubscription && (
                                         <button
                                             onClick={handleCancelSubscription}
                                             disabled={billingAction !== null}
@@ -667,11 +593,11 @@ export default function Settings() {
 
                                             <button
                                                 onClick={() => handleUpgrade(plan)}
-                                                disabled={billingAction !== null || !billing?.configured || !planMeta?.enabled || (hasActiveSubscription && !isCurrentPlan)}
+                                                disabled={billingAction !== null || !planMeta?.enabled || (hasBlockingSubscription && !isCurrentPlan)}
                                                 className="w-full bg-white text-black hover:bg-slate-200 disabled:bg-slate-300/20 disabled:text-slate-500 px-4 py-2.5 rounded-xl text-sm font-bold transition-all inline-flex items-center justify-center gap-2"
                                             >
-                                                {billingAction === plan ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
-                                                {isCurrentPlan ? "Current Plan" : hasActiveSubscription ? "Another Subscription Active" : `Upgrade to ${planMeta?.label || plan}`}
+                                                <CreditCard className="w-4 h-4" />
+                                                {isCurrentPlan ? "Current Plan" : hasBlockingSubscription ? "Another Subscription Active" : `Upgrade to ${planMeta?.label || plan}`}
                                             </button>
                                         </div>
                                     );
