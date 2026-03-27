@@ -18,6 +18,7 @@ export interface AuthUser {
         endedAt?: string;
         planChangedAt?: string;
     };
+    projectCount?: number;
     createdAt?: string;
     lastLoginAt?: string;
     loginCount?: number;
