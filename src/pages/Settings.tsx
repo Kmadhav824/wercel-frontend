@@ -4,7 +4,7 @@ import axios from "axios";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
-import { Github, ArrowLeft, Loader2, Link2, ShieldCheck, Unplug, Sun, Moon, Bell, LockKeyhole, Mail, GitBranch, Download, Sparkles, LogOut } from "lucide-react";
+import { Github, ArrowLeft, Loader2, Link2, ShieldCheck, Unplug, Sun, Moon, Bell, LockKeyhole, Mail, GitBranch, Download, Sparkles, LogOut, Crown, RefreshCcw, CreditCard, CircleDollarSign } from "lucide-react";
 
 const AUTH_URL = import.meta.env.VITE_AUTH_URL || "http://localhost:4000";
 
@@ -28,6 +28,32 @@ type DeploymentPreferences = {
     autoRefreshScreenshot: boolean;
 };
 
+type PaidPlan = "pro" | "enterprise";
+
+type BillingDetails = {
+    plan: "free" | "pro" | "enterprise";
+    subscriptionId?: string;
+    planId?: string;
+    status: string;
+    currentStart?: string;
+    currentEnd?: string;
+    endedAt?: string;
+    planChangedAt?: string;
+};
+
+type BillingResponse = {
+    configured: boolean;
+    webhookConfigured?: boolean;
+    keyId: string | null;
+    plans: Record<PaidPlan, {
+        label: string;
+        planId: string;
+        enabled: boolean;
+        description: string;
+    }>;
+    billing: BillingDetails;
+};
+
 const NOTIFICATION_PREFS_KEY = "nexus_settings_notification_prefs";
 const DEPLOYMENT_PREFS_KEY = "nexus_settings_deployment_prefs";
 
@@ -46,7 +72,7 @@ const defaultDeploymentPreferences: DeploymentPreferences = {
 };
 
 export default function Settings() {
-    const { user, token, setUser, logout } = useAuth();
+    const { user, token, setUser, logout, refreshUser } = useAuth();
     const { theme, setTheme } = useTheme();
     const navigate = useNavigate();
     const location = useLocation();
@@ -58,6 +84,11 @@ export default function Settings() {
     const [sendingPasswordReset, setSendingPasswordReset] = useState(false);
     const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreferences>(defaultNotificationPreferences);
     const [deploymentPreferences, setDeploymentPreferences] = useState<DeploymentPreferences>(defaultDeploymentPreferences);
+    const [billing, setBilling] = useState<BillingResponse | null>(null);
+    const [billingLoading, setBillingLoading] = useState(false);
+    const [billingAction, setBillingAction] = useState<"pro" | "enterprise" | "sync" | "cancel" | null>(null);
+
+    const authHeaders = token ? { Authorization: `Bearer ${token}` } : undefined;
 
     useEffect(() => {
         const savedNotifications = localStorage.getItem(NOTIFICATION_PREFS_KEY);
@@ -177,6 +208,30 @@ export default function Settings() {
         }
     }, [token]);
 
+    const loadBilling = async () => {
+        if (!token) return;
+
+        setBillingLoading(true);
+        try {
+            const res = await axios.get(`${AUTH_URL}/auth/billing/me`, {
+                headers: authHeaders,
+            });
+            setBilling(res.data);
+        } catch (err: any) {
+            if (err.response?.status !== 404) {
+                toast.error(err.response?.data?.error || "Failed to load billing details");
+            }
+        } finally {
+            setBillingLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (token) {
+            void loadBilling();
+        }
+    }, [token]);
+
     useEffect(() => {
         const params = new URLSearchParams(location.search);
         const github = params.get("github");
@@ -237,6 +292,121 @@ export default function Settings() {
             setDisconnectingGithub(false);
         }
     };
+
+    const loadRazorpayCheckout = async (): Promise<any> => {
+        const win = window as Window & { Razorpay?: new (options: Record<string, unknown>) => { open: () => void } };
+        if (win.Razorpay) {
+            return win.Razorpay;
+        }
+
+        await new Promise<void>((resolve, reject) => {
+            const existing = document.querySelector('script[data-razorpay-checkout="true"]') as HTMLScriptElement | null;
+            if (existing) {
+                existing.addEventListener("load", () => resolve(), { once: true });
+                existing.addEventListener("error", () => reject(new Error("Failed to load Razorpay Checkout")), { once: true });
+                return;
+            }
+
+            const script = document.createElement("script");
+            script.src = "https://checkout.razorpay.com/v1/checkout.js";
+            script.async = true;
+            script.dataset.razorpayCheckout = "true";
+            script.onload = () => resolve();
+            script.onerror = () => reject(new Error("Failed to load Razorpay Checkout"));
+            document.body.appendChild(script);
+        });
+
+        if (!win.Razorpay) {
+            throw new Error("Razorpay Checkout is unavailable");
+        }
+
+        return win.Razorpay;
+    };
+
+    const handleUpgrade = async (plan: PaidPlan) => {
+        if (!token) return;
+
+        setBillingAction(plan);
+        try {
+            const [{ data }, RazorpayCtor] = await Promise.all([
+                axios.post(`${AUTH_URL}/auth/billing/create-subscription`, { plan }, { headers: authHeaders }),
+                loadRazorpayCheckout(),
+            ]);
+
+            const razorpay = new RazorpayCtor({
+                key: data.keyId,
+                subscription_id: data.checkout.subscriptionId,
+                name: `Nexus ${data.checkout.plan === "enterprise" ? "Enterprise" : "Pro"}`,
+                description: "Secure recurring billing for your Nexus workspace",
+                image: "/favicon.ico",
+                prefill: data.checkout.prefill,
+                notes: {
+                    plan,
+                },
+                theme: {
+                    color: "#6366f1",
+                },
+                modal: {
+                    ondismiss: () => {
+                        toast("Checkout closed. You can resume anytime from Settings.");
+                    },
+                },
+                handler: async (response: { razorpay_subscription_id?: string }) => {
+                    try {
+                        await axios.post(`${AUTH_URL}/auth/billing/sync`, {
+                            subscriptionId: response.razorpay_subscription_id || data.checkout.subscriptionId,
+                        }, { headers: authHeaders });
+                        await Promise.all([loadBilling(), refreshUser()]);
+                        toast.success("Payment authorized. We refreshed your billing status.");
+                    } catch (err: any) {
+                        toast.error(err.response?.data?.error || "Payment captured, but billing sync is still pending webhook confirmation.");
+                    }
+                },
+            });
+
+            razorpay.open();
+        } catch (err: any) {
+            toast.error(err.response?.data?.error || err.message || "Failed to start checkout");
+        } finally {
+            setBillingAction(null);
+        }
+    };
+
+    const handleSyncBilling = async () => {
+        if (!token) return;
+
+        setBillingAction("sync");
+        try {
+            await axios.post(`${AUTH_URL}/auth/billing/sync`, {}, { headers: authHeaders });
+            await Promise.all([loadBilling(), refreshUser()]);
+            toast.success("Billing status refreshed.");
+        } catch (err: any) {
+            toast.error(err.response?.data?.error || "Failed to refresh billing status");
+        } finally {
+            setBillingAction(null);
+        }
+    };
+
+    const handleCancelSubscription = async () => {
+        if (!token) return;
+
+        setBillingAction("cancel");
+        try {
+            const res = await axios.post(`${AUTH_URL}/auth/billing/cancel`, {
+                cancelAtCycleEnd: true,
+            }, { headers: authHeaders });
+            await Promise.all([loadBilling(), refreshUser()]);
+            toast.success(res.data.message || "Subscription cancellation scheduled.");
+        } catch (err: any) {
+            toast.error(err.response?.data?.error || "Failed to cancel subscription");
+        } finally {
+            setBillingAction(null);
+        }
+    };
+
+    const billingStatus = billing?.billing?.status || user?.billing?.status || "inactive";
+    const isPaidPlan = user?.plan === "pro" || user?.plan === "enterprise";
+    const hasActiveSubscription = ["active", "authenticated", "pending", "created"].includes(billingStatus);
 
     return (
         <div className="min-h-screen bg-[#06060c] text-white">
@@ -401,6 +571,116 @@ export default function Settings() {
                                     If you need private repository access, ensure your GitHub OAuth app is configured with the correct callback URL and repository scope.
                                 </p>
                             </div>
+                        </div>
+                    </div>
+
+                    {/* Security */}
+                    <div className="p-8 flex flex-col md:flex-row gap-8 items-start">
+                        <div className="w-full md:w-1/3 space-y-2">
+                            <h3 className="text-lg font-semibold text-white">Billing & Plans</h3>
+                            <p className="text-sm text-slate-400">Upgrade securely with server-verified billing. Access changes only after backend confirmation.</p>
+                        </div>
+
+                        <div className="w-full md:w-2/3 bg-white/5 border border-white/10 rounded-xl p-6 space-y-4">
+                            <div className="bg-[#05050f] border border-white/10 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <div className="space-y-2">
+                                    <div className="flex items-center gap-2">
+                                        <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider border ${isPaidPlan ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/20" : "bg-white/5 text-slate-300 border-white/10"}`}>
+                                            {user?.plan || "free"}
+                                        </span>
+                                        <span className="text-xs text-slate-500">
+                                            Status: {billingStatus}
+                                        </span>
+                                    </div>
+                                    <h4 className="text-lg font-semibold text-white flex items-center gap-2">
+                                        <CircleDollarSign className="w-5 h-5 text-indigo-300" />
+                                        Current workspace plan
+                                    </h4>
+                                    <p className="text-sm text-slate-400">
+                                        {isPaidPlan
+                                            ? `Your paid plan is active${billing?.billing?.currentEnd ? ` until ${new Date(billing.billing.currentEnd).toLocaleDateString()}` : ""}.`
+                                            : "You are on the free plan. Upgrade when you are ready for premium features and future Next.js runtime access."}
+                                    </p>
+                                    {billing?.billing?.subscriptionId && (
+                                        <p className="text-xs font-mono text-slate-500">
+                                            Subscription: {billing.billing.subscriptionId}
+                                        </p>
+                                    )}
+                                </div>
+
+                                <div className="flex flex-wrap gap-2">
+                                    <button
+                                        onClick={handleSyncBilling}
+                                        disabled={billingAction !== null}
+                                        className="bg-white/5 hover:bg-white/10 border border-white/10 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-all inline-flex items-center gap-2 disabled:opacity-60"
+                                    >
+                                        {billingAction === "sync" || billingLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCcw className="w-4 h-4" />}
+                                        Refresh
+                                    </button>
+                                    {hasActiveSubscription && (
+                                        <button
+                                            onClick={handleCancelSubscription}
+                                            disabled={billingAction !== null}
+                                            className="bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-300 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all inline-flex items-center gap-2 disabled:opacity-60"
+                                        >
+                                            {billingAction === "cancel" ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
+                                            Cancel At Cycle End
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            {!billing?.configured && (
+                                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 text-sm text-amber-200">
+                                    Billing is not fully configured yet. Add your Razorpay key, secret, and paid plan IDs on the auth service before taking live payments.
+                                </div>
+                            )}
+
+                            {billing?.configured && billing.webhookConfigured === false && (
+                                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 text-sm text-amber-200">
+                                    Checkout is available, but webhook confirmation is not configured yet. Add `RAZORPAY_WEBHOOK_SECRET` before relying on automated billing state changes.
+                                </div>
+                            )}
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {(["pro", "enterprise"] as PaidPlan[]).map((plan) => {
+                                    const planMeta = billing?.plans?.[plan];
+                                    const isCurrentPlan = user?.plan === plan;
+                                    return (
+                                        <div key={plan} className={`rounded-2xl border p-5 ${isCurrentPlan ? "bg-indigo-500/10 border-indigo-500/30" : "bg-[#05050f] border-white/10"}`}>
+                                            <div className="flex items-start justify-between gap-4 mb-3">
+                                                <div>
+                                                    <h5 className="text-base font-semibold text-white flex items-center gap-2">
+                                                        <Crown className={`w-4 h-4 ${plan === "enterprise" ? "text-amber-300" : "text-indigo-300"}`} />
+                                                        {planMeta?.label || plan}
+                                                    </h5>
+                                                    <p className="text-xs text-slate-400 mt-1">
+                                                        {planMeta?.description || "Recurring subscription managed via Razorpay."}
+                                                    </p>
+                                                </div>
+                                                {isCurrentPlan && (
+                                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                                        Current
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            <button
+                                                onClick={() => handleUpgrade(plan)}
+                                                disabled={billingAction !== null || !billing?.configured || !planMeta?.enabled || (hasActiveSubscription && !isCurrentPlan)}
+                                                className="w-full bg-white text-black hover:bg-slate-200 disabled:bg-slate-300/20 disabled:text-slate-500 px-4 py-2.5 rounded-xl text-sm font-bold transition-all inline-flex items-center justify-center gap-2"
+                                            >
+                                                {billingAction === plan ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
+                                                {isCurrentPlan ? "Current Plan" : hasActiveSubscription ? "Another Subscription Active" : `Upgrade to ${planMeta?.label || plan}`}
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            <p className="text-xs text-slate-500">
+                                Checkout is started from the backend and plan access is updated only after a server-side sync or Razorpay webhook confirmation.
+                            </p>
                         </div>
                     </div>
 

@@ -9,6 +9,15 @@ export interface AuthUser {
     email: string;
     avatar?: string;
     plan: "free" | "pro" | "enterprise";
+    billing?: {
+        subscriptionId?: string;
+        planId?: string;
+        status: string;
+        currentStart?: string;
+        currentEnd?: string;
+        endedAt?: string;
+        planChangedAt?: string;
+    };
     createdAt?: string;
     lastLoginAt?: string;
     loginCount?: number;
@@ -24,6 +33,7 @@ interface AuthContextValue {
     googleAuth: (idToken: string) => Promise<void>;
     logout: () => void;
     setUser: (user: AuthUser | null) => void;
+    refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -47,6 +57,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setLoading(false);
         }
     }, []);
+
+    const refreshUser = async () => {
+        const activeToken = token || localStorage.getItem("nexus_token");
+        if (!activeToken) {
+            setUser(null);
+            return;
+        }
+
+        const { data } = await axios.get(`${AUTH_URL}/auth/me`, {
+            headers: { Authorization: `Bearer ${activeToken}` },
+        });
+        setUser(data.user);
+    };
 
     const persist = (token: string, user: AuthUser) => {
         localStorage.setItem("nexus_token", token);
@@ -80,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     return (
-        <AuthContext.Provider value={{ user, token, loading, login, register, googleAuth, logout, setUser }}>
+        <AuthContext.Provider value={{ user, token, loading, login, register, googleAuth, logout, setUser, refreshUser }}>
             {children}
         </AuthContext.Provider>
     );
