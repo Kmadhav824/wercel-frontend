@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom"
 import { useAuth } from "../contexts/AuthContext"
-import { Github, Globe, Loader2, Rocket, Zap, Sparkles, ArrowRight, Server, CloudLightning, Shield, Code2, FileText, Share2 } from "lucide-react"
+import { Github, Globe, Loader2, Rocket, Zap, Sparkles, ArrowRight, Server, CloudLightning, Shield, Code2, FileText, Share2, GitBranch, Wrench, Send } from "lucide-react"
 
 export function Landing() {
   const { user } = useAuth();
@@ -148,6 +148,77 @@ export function Landing() {
             <div className="space-y-2">
               <div className="text-4xl sm:text-5xl font-black text-white">Instant</div>
               <div className="text-sm font-semibold text-slate-400 uppercase tracking-widest">Rollbacks</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Story Section */}
+      <section className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 mb-32">
+        <div className="text-center mb-16 space-y-4">
+          <p className="text-xs uppercase tracking-[0.22em] text-indigo-300/80 font-semibold">How Nexus Works</p>
+          <h2 className="text-3xl md:text-5xl font-bold tracking-tight">From commit to production in three moves.</h2>
+          <p className="text-xl text-slate-400 max-w-2xl mx-auto">A clear deployment story your team can follow in seconds, without extra ops overhead.</p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-8">
+          <div className="bg-[#0a0a16]/90 border border-white/10 rounded-3xl p-8 md:p-10 shadow-xl overflow-hidden relative">
+            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-transparent to-fuchsia-500/10 pointer-events-none" />
+            <div className="relative z-10 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="rounded-2xl border border-white/10 bg-[#05050f] p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-xs font-bold uppercase tracking-widest text-indigo-300">Step 1</span>
+                    <GitBranch className="w-4 h-4 text-indigo-300" />
+                  </div>
+                  <h3 className="text-lg font-bold mb-2">Connect Repo</h3>
+                  <p className="text-sm text-slate-400 leading-relaxed">Link your GitHub project and pick build settings once. Nexus keeps the pipeline ready.</p>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-[#05050f] p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-xs font-bold uppercase tracking-widest text-fuchsia-300">Step 2</span>
+                    <Wrench className="w-4 h-4 text-fuchsia-300" />
+                  </div>
+                  <h3 className="text-lg font-bold mb-2">Build Isolated</h3>
+                  <p className="text-sm text-slate-400 leading-relaxed">Every deployment runs in an isolated builder with logs, status tracking, and predictable output.</p>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-[#05050f] p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-xs font-bold uppercase tracking-widest text-emerald-300">Step 3</span>
+                    <Send className="w-4 h-4 text-emerald-300" />
+                  </div>
+                  <h3 className="text-lg font-bold mb-2">Ship & Roll Back</h3>
+                  <p className="text-sm text-slate-400 leading-relaxed">Route traffic globally and recover fast with one-click rollback when a release needs correction.</p>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <p className="text-sm text-slate-300 leading-relaxed">
+                  Result: teams move from idea to live URL quickly, while still keeping operational visibility and control.
+                </p>
+                <Link to="/pricing" className="shrink-0 inline-flex items-center justify-center gap-2 bg-white text-[#06060c] hover:bg-slate-200 px-5 py-2.5 rounded-full text-sm font-bold transition-all hover:scale-105 active:scale-95">
+                  See Plans
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-[#0a0a16]/90 border border-white/10 rounded-3xl p-8 shadow-xl">
+            <p className="text-xs uppercase tracking-[0.22em] text-sky-300/80 font-semibold mb-4">Built For Real Constraints</p>
+            <h3 className="text-2xl font-bold mb-4">Practical by design, not overbuilt.</h3>
+            <div className="space-y-4 text-sm text-slate-300">
+              <p className="rounded-xl border border-white/10 bg-[#05050f] p-4">
+                Teams can start on free usage patterns, then step into Pro when workloads and collaboration grow.
+              </p>
+              <p className="rounded-xl border border-white/10 bg-[#05050f] p-4">
+                Build logs, deployment states, and rollback controls stay visible, so debugging is faster under pressure.
+              </p>
+              <p className="rounded-xl border border-white/10 bg-[#05050f] p-4">
+                Enterprise onboarding remains contact-led for tailored planning around scale, governance, and support.
+              </p>
             </div>
           </div>
         </div>

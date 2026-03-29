@@ -260,7 +260,7 @@ export default function UpgradePlan() {
                                 <div>
                                     <h2 className="text-2xl font-semibold text-white">Request Received</h2>
                                     <p className="text-slate-400 mt-2">
-                                        We have your upgrade request for the {plan} plan. One of us will get back to you at a time that works for you.
+                                        We have your upgrade request for the {plan} plan. One of us will get back to you at a time that works for you. Leave us a note at <a href="mailto:madhav@madhavkumar.dev" className="text-blue-400 hover:underline">madhav@madhavkumar.dev</a> if you have any questions.
                                     </p>
                                 </div>
                                 <div className="flex gap-3">
