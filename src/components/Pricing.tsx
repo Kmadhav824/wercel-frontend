@@ -100,8 +100,8 @@ export default function Pricing() {
                             <h3 className="text-2xl font-bold text-white flex items-center gap-2">Pro <Zap className="w-5 h-5 text-indigo-400 fill-indigo-400" /></h3>
                             <p className="pricing-pro-subtitle text-indigo-200/60 text-sm h-10">Advanced capabilities for high-performance scale and demanding teams.</p>
                             <div className="flex items-baseline gap-2">
-                                <span className="text-5xl font-black">$20</span>
-                                <span className="text-slate-500 font-medium">/ user / month</span>
+                                <span className="text-5xl font-black">Rs 1,700</span>
+                                <span className="text-slate-500 font-medium">/ month</span>
                             </div>
                             <Link
                                 to={user ? "/upgrade?plan=pro" : "/signup"}
