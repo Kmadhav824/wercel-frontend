@@ -7,7 +7,7 @@ import EnvVarsModal from "../components/EnvVarsModal";
 import BuildSettingsModal from "../components/BuildSettingsModal";
 import DeployRepoModal from "../components/DeployRepoModal";
 import CustomDomainsModal from "../components/CustomDomainsModal";
-import { Rocket, Github, Server, CheckCircle2, Loader2, ArrowRight, Settings as SettingsIcon, LogOut, Clock, RotateCcw, Trash2, Search, Sliders, Wrench, Terminal, X, Camera, LifeBuoy, BookOpen, MessageSquare, ShieldCheck, Activity, BadgeCheck, GaugeCircle, RefreshCcw, Globe2, Crown } from "lucide-react";
+import { Rocket, Github, Server, CheckCircle2, Loader2, ArrowRight, Settings as SettingsIcon, LogOut, Clock, RotateCcw, Trash2, Search, Sliders, Wrench, Terminal, X, Camera, LifeBuoy, BookOpen, MessageSquare, ShieldCheck, Activity, BadgeCheck, GaugeCircle, RefreshCcw, Globe2, Crown, Zap, AlertTriangle } from "lucide-react";
 
 const BACKEND_UPLOAD_URL = import.meta.env.VITE_BACKEND_UPLOAD_URL || "http://localhost:3000";
 const AUTH_URL = import.meta.env.VITE_AUTH_URL || "http://localhost:4000";
@@ -73,7 +73,7 @@ export default function Dashboard() {
 
     const [deployingRepo, setDeployingRepo] = useState<string | null>(null);
     const [rollingBack, setRollingBack] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState<"projects" | "deployments" | "github" | "support" | "services">("projects");
+    const [activeTab, setActiveTab] = useState<"projects" | "deployments" | "github" | "support" | "services" | "quota">("projects");
     const [deployments, setDeployments] = useState<any[]>([]);
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
     const [searchProject, setSearchProject] = useState("");
@@ -90,12 +90,37 @@ export default function Dashboard() {
     const logStreamAbortRef = useRef<AbortController | null>(null);
     const logsViewportRef = useRef<HTMLDivElement | null>(null);
 
+    // ── Quota state ───────────────────────────────────────────────────────
+    const [quota, setQuota] = useState<{ used: number; limit: number; remaining: number; resetsAt: string; plan: string } | null>(null);
+    const [quotaLoading, setQuotaLoading] = useState(false);
+    const [quotaError, setQuotaError] = useState<string | null>(null);
+
+    const loadQuota = async () => {
+        if (!token) return;
+        setQuotaLoading(true);
+        setQuotaError(null);
+        try {
+            const res = await axios.get(`${AUTH_URL}/auth/quota`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            setQuota(res.data.quota);
+        } catch (err: any) {
+            setQuotaError(err?.response?.data?.error || "Failed to load quota");
+        } finally {
+            setQuotaLoading(false);
+        }
+    };
+
     useEffect(() => {
         if (token) {
             loadProjects();
             checkGithub();
         }
     }, [token]);
+
+    useEffect(() => {
+        if (activeTab === "quota") loadQuota();
+    }, [activeTab]);
 
     useEffect(() => {
         let interval: NodeJS.Timeout;
@@ -488,6 +513,13 @@ export default function Dashboard() {
                         >
                             <Activity className="w-5 h-5" />
                             Services Status
+                        </button>
+                        <button
+                            onClick={() => setActiveTab("quota")}
+                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === "quota" ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20" : "text-slate-400 hover:text-white hover:bg-white/5 border border-transparent"}`}
+                        >
+                            <Zap className="w-5 h-5" />
+                            Build Quota
                         </button>
                         <button
                             onClick={() => setActiveTab("support")}
@@ -1192,6 +1224,142 @@ export default function Dashboard() {
                                                     </div>
                                                 </div>
                                             </div>
+                                        </div>
+                                    </div>
+                                )}
+                                {/* Build Quota Tab */}
+                                {activeTab === "quota" && (
+                                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
+                                        <div>
+                                            <h2 className="text-2xl font-bold text-white tracking-tight mb-1 flex items-center gap-3">
+                                                <Zap className="w-6 h-6 text-indigo-400" /> Build Quota
+                                            </h2>
+                                            <p className="text-slate-400 text-sm">Monitor your build-second usage and limits for the current billing period.</p>
+                                        </div>
+
+                                        {quotaLoading ? (
+                                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                                                {[1, 2, 3].map(i => <div key={i} className="h-32 bg-white/5 rounded-2xl animate-pulse" />)}
+                                            </div>
+                                        ) : quotaError ? (
+                                            <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6 flex items-center gap-4">
+                                                <AlertTriangle className="w-5 h-5 text-red-400 shrink-0" />
+                                                <p className="text-red-300 text-sm">{quotaError}</p>
+                                                <button onClick={loadQuota} className="ml-auto text-xs text-red-300 hover:text-white border border-red-500/30 px-3 py-1.5 rounded-lg transition-colors">Retry</button>
+                                            </div>
+                                        ) : quota ? (() => {
+                                            const pct = quota.limit === Number.MAX_SAFE_INTEGER ? 0 : Math.min(100, Math.round((quota.used / quota.limit) * 100));
+                                            const isUnlimited = quota.limit >= Number.MAX_SAFE_INTEGER;
+                                            const barColor = pct >= 90 ? "bg-red-400" : pct >= 70 ? "bg-amber-400" : "bg-indigo-400";
+                                            const resetDate = new Date(quota.resetsAt).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+                                            const planLabel = quota.plan.charAt(0).toUpperCase() + quota.plan.slice(1);
+                                            return (
+                                                <>
+                                                    {/* Stat Cards */}
+                                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                                        <div className="bg-[#0a0a16]/80 border border-white/10 rounded-2xl p-5">
+                                                            <p className="text-xs text-slate-400 mb-1 uppercase tracking-wide">Seconds Used</p>
+                                                            <p className="text-3xl font-bold text-white">{quota.used}</p>
+                                                            <p className="text-xs text-slate-500 mt-1">this billing period</p>
+                                                        </div>
+                                                        <div className="bg-[#0a0a16]/80 border border-white/10 rounded-2xl p-5">
+                                                            <p className="text-xs text-slate-400 mb-1 uppercase tracking-wide">Seconds Remaining</p>
+                                                            <p className={`text-3xl font-bold ${isUnlimited ? "text-emerald-400" : pct >= 90 ? "text-red-400" : "text-white"}`}>
+                                                                {isUnlimited ? "∞" : quota.remaining}
+                                                            </p>
+                                                            <p className="text-xs text-slate-500 mt-1">{isUnlimited ? "unlimited" : `of ${quota.limit} total`}</p>
+                                                        </div>
+                                                        <div className="bg-[#0a0a16]/80 border border-white/10 rounded-2xl p-5">
+                                                            <p className="text-xs text-slate-400 mb-1 uppercase tracking-wide">Resets On</p>
+                                                            <p className="text-lg font-bold text-white mt-1">{resetDate}</p>
+                                                            <p className="text-xs text-slate-500 mt-1">monthly billing cycle</p>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Usage Bar */}
+                                                    <div className="bg-[#0a0a16]/80 border border-white/10 rounded-2xl p-6">
+                                                        <div className="flex items-center justify-between mb-3">
+                                                            <h3 className="text-white font-semibold">Usage This Period</h3>
+                                                            <span className={`text-xs px-2.5 py-1 rounded-full border font-semibold ${
+                                                                quota.plan === "enterprise" ? "text-purple-300 border-purple-500/30 bg-purple-500/10" :
+                                                                quota.plan === "pro" ? "text-indigo-300 border-indigo-500/30 bg-indigo-500/10" :
+                                                                "text-slate-300 border-white/20 bg-white/5"
+                                                            }`}>{planLabel} Plan</span>
+                                                        </div>
+                                                        {isUnlimited ? (
+                                                            <div className="flex items-center gap-3 text-emerald-400">
+                                                                <CheckCircle2 className="w-5 h-5" />
+                                                                <span className="text-sm font-medium">Unlimited build seconds — no cap on this plan.</span>
+                                                            </div>
+                                                        ) : (
+                                                            <>
+                                                                <div className="flex justify-between text-xs text-slate-400 mb-2">
+                                                                    <span>{quota.used} sec used</span>
+                                                                    <span>{pct}%</span>
+                                                                </div>
+                                                                <div className="h-3 rounded-full bg-white/5 overflow-hidden">
+                                                                    <div
+                                                                        className={`h-full rounded-full transition-all duration-700 ${barColor}`}
+                                                                        style={{ width: `${pct}%` }}
+                                                                    />
+                                                                </div>
+                                                                <div className="flex justify-between text-xs text-slate-500 mt-2">
+                                                                    <span>0 sec</span>
+                                                                    <span>{quota.limit} sec</span>
+                                                                </div>
+                                                                {pct >= 80 && (
+                                                                    <div className="mt-4 flex items-start gap-3 bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3">
+                                                                        <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                                                                        <p className="text-xs text-amber-300">
+                                                                            You've used {pct}% of your monthly build seconds.
+                                                                            {pct >= 100 ? " Quota exhausted — new builds are blocked until your period resets." : " Consider upgrading to avoid hitting the limit."}
+                                                                        </p>
+                                                                    </div>
+                                                                )}
+                                                            </>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Tier comparison + upgrade CTA */}
+                                                    {quota.plan !== "enterprise" && (
+                                                        <div className="bg-[#0a0a16]/80 border border-indigo-500/20 rounded-2xl p-6">
+                                                            <h3 className="text-white font-semibold mb-4">Plan Comparison</h3>
+                                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+                                                                {[
+                                                                    { plan: "Free", limit: "6,000 sec / mo", active: quota.plan === "free" },
+                                                                    { plan: "Pro", limit: "60,000 sec / mo", active: quota.plan === "pro" },
+                                                                    { plan: "Enterprise", limit: "Unlimited", active: quota.plan === "enterprise" },
+                                                                ].map(tier => (
+                                                                    <div
+                                                                        key={tier.plan}
+                                                                        className={`rounded-xl p-4 border text-center transition-all ${
+                                                                            tier.active
+                                                                                ? "border-indigo-500/40 bg-indigo-500/10"
+                                                                                : "border-white/10 bg-white/5"
+                                                                        }`}
+                                                                    >
+                                                                        <p className={`text-sm font-bold mb-1 ${tier.active ? "text-indigo-300" : "text-slate-300"}`}>{tier.plan}</p>
+                                                                        <p className="text-xs text-slate-400">{tier.limit}</p>
+                                                                        {tier.active && <span className="text-[10px] text-indigo-400 font-semibold mt-1 block">Current</span>}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                            <Link
+                                                                to="/upgrade"
+                                                                className="w-full flex items-center justify-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-[0_0_20px_rgba(99,102,241,0.3)] hover:shadow-[0_0_30px_rgba(99,102,241,0.5)]"
+                                                            >
+                                                                <Crown className="w-4 h-4" /> Upgrade Plan
+                                                            </Link>
+                                                        </div>
+                                                    )}
+                                                </>
+                                            );
+                                        })() : null}
+
+                                        <div className="flex justify-end">
+                                            <button onClick={loadQuota} className="flex items-center gap-2 text-xs text-slate-400 hover:text-white border border-white/10 hover:border-white/20 px-3 py-2 rounded-lg transition-colors">
+                                                <RefreshCcw className="w-3.5 h-3.5" /> Refresh Quota
+                                            </button>
                                         </div>
                                     </div>
                                 )}
