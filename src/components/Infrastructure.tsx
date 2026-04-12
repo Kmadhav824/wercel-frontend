@@ -108,7 +108,7 @@ export default function Infrastructure() {
                                 <Network className="w-8 h-8" />
                             </div>
                             <h3 className="font-bold text-xl text-emerald-400">Global Request Handler</h3>
-                            <p className="text-slate-300">The Edge proxy sits between the user and R2. It dynamically resolves `.nexus.app` domains, streams chunks directly from Cloudflare, and applies appropriate content-type headers instantly.</p>
+                            <p className="text-slate-300">The Edge proxy sits between the user and R2. It dynamically resolves the domains, streams chunks directly from Cloudflare, and applies appropriate content-type headers instantly.</p>
                         </div>
                     </div>
                 </div>
