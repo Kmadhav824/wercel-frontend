@@ -7,7 +7,8 @@ import EnvVarsModal from "../components/EnvVarsModal";
 import BuildSettingsModal from "../components/BuildSettingsModal";
 import DeployRepoModal from "../components/DeployRepoModal";
 import CustomDomainsModal from "../components/CustomDomainsModal";
-import { Rocket, Github, Server, CheckCircle2, Loader2, ArrowRight, Settings as SettingsIcon, LogOut, Clock, RotateCcw, Trash2, Search, Sliders, Wrench, Terminal, X, Camera, LifeBuoy, BookOpen, MessageSquare, ShieldCheck, Activity, BadgeCheck, GaugeCircle, RefreshCcw, Globe2, Crown, Zap, AlertTriangle } from "lucide-react";
+import AutoDeployModal from "../components/AutoDeployModal";
+import { Rocket, Github, Server, CheckCircle2, Loader2, ArrowRight, Settings as SettingsIcon, LogOut, Clock, RotateCcw, Trash2, Search, Sliders, Wrench, Terminal, X, Camera, LifeBuoy, BookOpen, MessageSquare, ShieldCheck, Activity, BadgeCheck, GaugeCircle, RefreshCcw, Globe2, Crown, Zap, AlertTriangle, Webhook } from "lucide-react";
 
 const BACKEND_UPLOAD_URL = import.meta.env.VITE_BACKEND_UPLOAD_URL || "http://localhost:3000";
 const AUTH_URL = import.meta.env.VITE_AUTH_URL || "http://localhost:4000";
@@ -89,6 +90,7 @@ export default function Dashboard() {
     const [logsError, setLogsError] = useState<string | null>(null);
     const logStreamAbortRef = useRef<AbortController | null>(null);
     const logsViewportRef = useRef<HTMLDivElement | null>(null);
+    const [autoDeployModalProject, setAutoDeployModalProject] = useState<any | null>(null);
 
     // ── Quota state ───────────────────────────────────────────────────────
     const [quota, setQuota] = useState<{ used: number; limit: number; remaining: number; resetsAt: string; plan: string } | null>(null);
@@ -722,6 +724,21 @@ export default function Dashboard() {
                                                             >
                                                                 {user?.plan === "pro" || user?.plan === "enterprise" ? <Globe2 className="w-4 h-4" /> : <Crown className="w-4 h-4" />}
                                                                 <span className="text-xs font-semibold">{user?.plan === "pro" || user?.plan === "enterprise" ? "Domains" : "Pro+"}</span>
+                                                            </button>
+                                                            {/* Auto-Deploy Button */}
+                                                            <button
+                                                                onClick={() => setAutoDeployModalProject(p)}
+                                                                className={`relative flex items-center justify-center p-2 rounded-xl transition-all border ${
+                                                                    p.autoDeploy
+                                                                        ? "bg-indigo-500/15 border-indigo-500/40 text-indigo-400 hover:bg-indigo-500/25"
+                                                                        : "bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border-white/10"
+                                                                }`}
+                                                                title={p.autoDeploy ? "Auto-Deploy: ON" : "Auto-Deploy: OFF"}
+                                                            >
+                                                                <Webhook className="w-5 h-5" />
+                                                                {p.autoDeploy && (
+                                                                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-indigo-400 border-2 border-[#0a0a16] animate-pulse" />
+                                                                )}
                                                             </button>
                                                             {p.status === "deployed" && p.activeDeploymentId && (
                                                                 <button
@@ -1388,6 +1405,17 @@ export default function Dashboard() {
                     project={customDomainsModalProject}
                     onClose={() => setCustomDomainsModalProject(null)}
                     onUpdated={loadProjects}
+                />
+            )}
+
+            {autoDeployModalProject && (
+                <AutoDeployModal
+                    project={autoDeployModalProject}
+                    token={token!}
+                    onClose={() => {
+                        setAutoDeployModalProject(null);
+                        loadProjects(); // refresh so autoDeploy badge updates
+                    }}
                 />
             )}
 
