@@ -129,8 +129,28 @@ export default function Dashboard() {
         if (activeTab === "deployments" && selectedProjectId) {
             const hasBuilding = deployments.some(d => ["queued", "cloning", "building", "deploying"].includes(d.status));
             if (hasBuilding) {
-                interval = setInterval(() => {
-                    loadDeployments(selectedProjectId, true); // silent refresh
+                interval = setInterval(async () => {
+                    const prevDeployments = deployments;
+                    await loadDeployments(selectedProjectId, true); // silent refresh
+
+                    // Wire autoRefreshScreenshot: fire when a build transitions to 'deployed'
+                    try {
+                        const savedPrefs = localStorage.getItem("nexus_settings_deployment_prefs");
+                        const prefs = savedPrefs ? JSON.parse(savedPrefs) : {};
+                        if (prefs.autoRefreshScreenshot) {
+                            const newlyDeployed = prevDeployments.filter(
+                                d => ["queued", "cloning", "building", "deploying"].includes(d.status)
+                            );
+                            for (const dep of newlyDeployed) {
+                                const updated = deployments.find(d => d._id === dep._id);
+                                if (updated?.status === "deployed") {
+                                    fetch(`${BACKEND_UPLOAD_URL}/screenshot/trigger?id=${updated.uploadId}`, { method: "POST" }).catch(() => {});
+                                }
+                            }
+                        }
+                    } catch {
+                        // Non-critical — ignore pref read errors
+                    }
                 }, STATUS_REFRESH_MS);
             }
         } else if (activeTab === "projects") {
@@ -250,7 +270,26 @@ export default function Dashboard() {
         setDeployRepoModalRepo(null);
         setDeployingRepo(null);
         await loadProjects();
-        loadDeployments(projectId);
+        await loadDeployments(projectId);
+
+        // Wire autoOpenLogs preference
+        try {
+            const savedPrefs = localStorage.getItem("nexus_settings_deployment_prefs");
+            const prefs = savedPrefs ? JSON.parse(savedPrefs) : {};
+            if (prefs.autoOpenLogs !== false) {
+                // The most recent deployment in the list is the one just started
+                const res = await import("axios").then(m => m.default.get(
+                    `${AUTH_URL}/auth/projects/${projectId}/deployments`,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                ));
+                const latest = (res.data.deployments || [])[0];
+                if (latest && ["queued", "cloning", "building", "deploying"].includes(latest.status)) {
+                    streamDeploymentLogs(latest);
+                }
+            }
+        } catch {
+            // Non-critical — ignore if pref read or stream fails
+        }
     };
 
     const handleRedeployProject = async (projectId: string) => {

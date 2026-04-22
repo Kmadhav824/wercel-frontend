@@ -4,7 +4,7 @@ import axios from "axios";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
-import { Github, ArrowLeft, Loader2, Link2, ShieldCheck, Unplug, Sun, Moon, Bell, LockKeyhole, Mail, GitBranch, Download, Sparkles, LogOut, Crown, RefreshCcw, CreditCard, CircleDollarSign } from "lucide-react";
+import { Github, ArrowLeft, Loader2, Link2, ShieldCheck, Unplug, Sun, Moon, Bell, LockKeyhole, Mail, GitBranch, Download, Sparkles, LogOut, Crown, RefreshCcw, CreditCard, CircleDollarSign, KeyRound, Eye, EyeOff } from "lucide-react";
 
 const AUTH_URL = import.meta.env.VITE_AUTH_URL || "http://localhost:4000";
 
@@ -88,6 +88,15 @@ export default function Settings() {
     const [billingLoading, setBillingLoading] = useState(false);
     const [billingAction, setBillingAction] = useState<"pro" | "enterprise" | "sync" | "cancel" | null>(null);
 
+    // Change-password form state
+    const [changePwOpen, setChangePwOpen] = useState(false);
+    const [changePwCurrent, setChangePwCurrent] = useState("");
+    const [changePwNew, setChangePwNew] = useState("");
+    const [changePwConfirm, setChangePwConfirm] = useState("");
+    const [changePwLoading, setChangePwLoading] = useState(false);
+    const [changePwShowCurrent, setChangePwShowCurrent] = useState(false);
+    const [changePwShowNew, setChangePwShowNew] = useState(false);
+
     const authHeaders = token ? { Authorization: `Bearer ${token}` } : undefined;
 
     useEffect(() => {
@@ -147,6 +156,38 @@ export default function Settings() {
             toast.error(err.response?.data?.error || "Failed to send password reset email");
         } finally {
             setSendingPasswordReset(false);
+        }
+    };
+
+    const handleChangePassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!changePwNew || !changePwCurrent) {
+            toast.error("All fields are required");
+            return;
+        }
+        if (changePwNew.length < 8) {
+            toast.error("New password must be at least 8 characters");
+            return;
+        }
+        if (changePwNew !== changePwConfirm) {
+            toast.error("New passwords do not match");
+            return;
+        }
+        setChangePwLoading(true);
+        try {
+            await axios.put(`${AUTH_URL}/auth/change-password`, {
+                currentPassword: changePwCurrent,
+                newPassword: changePwNew,
+            }, { headers: { Authorization: `Bearer ${token}` } });
+            toast.success("Password changed successfully.");
+            setChangePwOpen(false);
+            setChangePwCurrent("");
+            setChangePwNew("");
+            setChangePwConfirm("");
+        } catch (err: any) {
+            toast.error(err.response?.data?.error || "Failed to change password");
+        } finally {
+            setChangePwLoading(false);
         }
     };
 
@@ -631,6 +672,17 @@ export default function Settings() {
                                     <p className="text-xs text-slate-400">Send a secure reset link to {user?.email}.</p>
                                 </button>
 
+                                <button
+                                    onClick={() => setChangePwOpen((prev) => !prev)}
+                                    className={`bg-[#05050f] hover:bg-white/5 border rounded-xl p-4 text-left transition-colors ${changePwOpen ? "border-indigo-500/40" : "border-white/10"}`}
+                                >
+                                    <p className="text-sm font-semibold text-white mb-1 flex items-center gap-2">
+                                        <KeyRound className="w-4 h-4 text-indigo-300" />
+                                        Change password
+                                    </p>
+                                    <p className="text-xs text-slate-400">Update your password while signed in — no email required.</p>
+                                </button>
+
                                 <a
                                     href="https://github.com/settings/security"
                                     target="_blank"
@@ -641,6 +693,88 @@ export default function Settings() {
                                     <p className="text-xs text-slate-400">Recommended for linked source-control accounts.</p>
                                 </a>
                             </div>
+
+                            {/* Change password inline form */}
+                            {changePwOpen && (
+                                <form onSubmit={handleChangePassword} className="bg-[#05050f] border border-indigo-500/20 rounded-xl p-5 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <p className="text-sm font-semibold text-white flex items-center gap-2">
+                                        <KeyRound className="w-4 h-4 text-indigo-300" />
+                                        Change your password
+                                    </p>
+
+                                    <div className="space-y-3">
+                                        <div className="relative">
+                                            <label className="text-xs text-slate-400 mb-1.5 block">Current password</label>
+                                            <input
+                                                type={changePwShowCurrent ? "text" : "password"}
+                                                value={changePwCurrent}
+                                                onChange={(e) => setChangePwCurrent(e.target.value)}
+                                                required
+                                                autoComplete="current-password"
+                                                placeholder="Enter your current password"
+                                                className="w-full bg-black/30 border border-white/10 text-white rounded-lg px-4 pr-10 py-2.5 text-sm focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-all placeholder:text-slate-600"
+                                            />
+                                            <button type="button" onClick={() => setChangePwShowCurrent(p => !p)} className="absolute right-3 top-[34px] text-slate-500 hover:text-slate-300 transition-colors">
+                                                {changePwShowCurrent ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                            </button>
+                                        </div>
+
+                                        <div className="relative">
+                                            <label className="text-xs text-slate-400 mb-1.5 block">New password <span className="text-slate-600">(min 8 characters)</span></label>
+                                            <input
+                                                type={changePwShowNew ? "text" : "password"}
+                                                value={changePwNew}
+                                                onChange={(e) => setChangePwNew(e.target.value)}
+                                                required
+                                                autoComplete="new-password"
+                                                placeholder="Enter new password"
+                                                className="w-full bg-black/30 border border-white/10 text-white rounded-lg px-4 pr-10 py-2.5 text-sm focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-all placeholder:text-slate-600"
+                                            />
+                                            <button type="button" onClick={() => setChangePwShowNew(p => !p)} className="absolute right-3 top-[34px] text-slate-500 hover:text-slate-300 transition-colors">
+                                                {changePwShowNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                            </button>
+                                        </div>
+
+                                        <div>
+                                            <label className="text-xs text-slate-400 mb-1.5 block">Confirm new password</label>
+                                            <input
+                                                type="password"
+                                                value={changePwConfirm}
+                                                onChange={(e) => setChangePwConfirm(e.target.value)}
+                                                required
+                                                autoComplete="new-password"
+                                                placeholder="Re-enter new password"
+                                                className={`w-full bg-black/30 border text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none transition-all placeholder:text-slate-600 ${
+                                                    changePwConfirm && changePwNew !== changePwConfirm
+                                                        ? "border-red-500/50 focus:ring-1 focus:ring-red-500/30"
+                                                        : "border-white/10 focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30"
+                                                }`}
+                                            />
+                                            {changePwConfirm && changePwNew !== changePwConfirm && (
+                                                <p className="text-xs text-red-400 mt-1">Passwords do not match</p>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-3 pt-1">
+                                        <button
+                                            type="submit"
+                                            disabled={changePwLoading || (!!changePwConfirm && changePwNew !== changePwConfirm)}
+                                            className="bg-indigo-500 hover:bg-indigo-600 disabled:opacity-60 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all inline-flex items-center gap-2"
+                                        >
+                                            {changePwLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
+                                            Update Password
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => { setChangePwOpen(false); setChangePwCurrent(""); setChangePwNew(""); setChangePwConfirm(""); }}
+                                            className="text-sm text-slate-400 hover:text-white transition-colors"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </form>
+                            )}
 
                             <div className="bg-[#05050f] border border-white/10 rounded-xl p-4 space-y-2">
                                 <p className="text-sm font-semibold text-white">Session Summary</p>
