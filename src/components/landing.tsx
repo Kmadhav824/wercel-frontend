@@ -1,9 +1,32 @@
+import { useState } from "react"
 import { Link } from "react-router-dom"
 import { useAuth } from "../contexts/AuthContext"
-import { Github, Globe, Loader2, Rocket, Zap, Sparkles, ArrowRight, Server, CloudLightning, Shield, Code2, FileText, Share2, GitBranch, Wrench, Send } from "lucide-react"
+import { Github, Globe, Loader2, Rocket, Zap, Sparkles, ArrowRight, Server, CloudLightning, Shield, Code2, FileText, Share2, GitBranch, Wrench, Send, Check } from "lucide-react"
+
+const GITHUB_REPO_URL = "https://github.com/Kmadhav824/wercel-bundle";
 
 export function Landing() {
   const { user } = useAuth();
+  const [shareCopied, setShareCopied] = useState(false);
+
+  const handleShare = async () => {
+    const shareData = {
+      title: "Nexus – Deploy globally",
+      text: "Check out Nexus — a blazing-fast deployment platform that takes you from commit to production in seconds.",
+      url: window.location.href,
+    };
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(window.location.href);
+        setShareCopied(true);
+        setTimeout(() => setShareCopied(false), 2000);
+      }
+    } catch {
+      // User cancelled or API unavailable — silently ignore
+    }
+  };
 
   return (
     <div className="relative min-h-screen bg-[#06060c] text-white font-sans selection:bg-indigo-500/30 overflow-hidden">
@@ -301,9 +324,32 @@ export function Landing() {
             <span className="font-bold text-white">Nexus Engine</span>
           </div>
           <p className="text-sm">© {new Date().getFullYear()} Nexus. All rights reserved.</p>
-          <div className="flex gap-4">
-            <a href="#" className="hover:text-white transition-colors"><Github className="w-5 h-5" /></a>
-            <a href="#" className="hover:text-white transition-colors"><Share2 className="w-5 h-5" /></a>
+          <div className="flex gap-4 items-center">
+            <a
+              href={GITHUB_REPO_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="hover:text-white transition-colors"
+              title="View source on GitHub"
+            >
+              <Github className="w-5 h-5" />
+            </a>
+            <button
+              onClick={handleShare}
+              className="hover:text-white transition-colors relative group"
+              title={shareCopied ? "Link copied!" : "Share this page"}
+            >
+              {shareCopied ? (
+                <Check className="w-5 h-5 text-emerald-400" />
+              ) : (
+                <Share2 className="w-5 h-5" />
+              )}
+              {shareCopied && (
+                <span className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap text-[11px] font-semibold text-emerald-300 bg-emerald-900/80 border border-emerald-500/30 px-2 py-0.5 rounded-md pointer-events-none">
+                  Copied!
+                </span>
+              )}
+            </button>
           </div>
         </div>
       </footer>
