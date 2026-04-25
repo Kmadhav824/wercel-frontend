@@ -435,7 +435,7 @@ export default function Settings() {
                                 </button>
                                 <button
                                     onClick={() => setTheme("light")}
-                                    className={`flex-1 rounded-xl border px-4 py-3 text-sm font-semibold transition-all flex items-center justify-center gap-2 ${theme === "light" ? "bg-indigo-500/20 border-indigo-500/40 text-indigo-200" : "bg-[#05050f] border-white/10 text-slate-300 hover:bg-white/5"}`}
+                                    className={`flex-1 rounded-xl border px-4 py-3 text-sm font-semibold transition-all flex items-center justify-center gap-2 ${theme === "light" ? "bg-indigo-500/20 border-indigo-500/40 text-indigo-500" : "bg-[#05050f] border-white/10 text-slate-300 hover:bg-white/5"}`}
                                 >
                                     <Sun className="w-4 h-4" />
                                     Light mode
@@ -744,11 +744,10 @@ export default function Settings() {
                                                 required
                                                 autoComplete="new-password"
                                                 placeholder="Re-enter new password"
-                                                className={`w-full bg-black/30 border text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none transition-all placeholder:text-slate-600 ${
-                                                    changePwConfirm && changePwNew !== changePwConfirm
+                                                className={`w-full bg-black/30 border text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none transition-all placeholder:text-slate-600 ${changePwConfirm && changePwNew !== changePwConfirm
                                                         ? "border-red-500/50 focus:ring-1 focus:ring-red-500/30"
                                                         : "border-white/10 focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30"
-                                                }`}
+                                                    }`}
                                             />
                                             {changePwConfirm && changePwNew !== changePwConfirm && (
                                                 <p className="text-xs text-red-400 mt-1">Passwords do not match</p>

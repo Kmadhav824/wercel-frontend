@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import axios from "axios";
 import { Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import { useTheme } from "../contexts/ThemeContext";
 import EnvVarsModal from "../components/EnvVarsModal";
 import BuildSettingsModal from "../components/BuildSettingsModal";
 import DeployRepoModal from "../components/DeployRepoModal";
@@ -66,6 +67,7 @@ type ActivityItem = {
 
 export default function Dashboard() {
     const { user, token, logout } = useAuth();
+    const { isDark } = useTheme();
 
     const [projects, setProjects] = useState<any[]>([]);
     const [repos, setRepos] = useState<any[]>([]);
@@ -665,20 +667,20 @@ export default function Dashboard() {
                                                     {projects.filter(p => p.name.toLowerCase().includes(searchProject.toLowerCase())).map(p => (
                                                         <div key={p._id} className="bg-[#0a0a16]/80 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden hover:border-indigo-500/50 transition-all group shadow-lg">
                                                         {/* ── Screenshot / Preview Thumbnail ── */}
-                                                        <div className="relative h-36 bg-gradient-to-br from-indigo-950/80 via-violet-950/60 to-slate-900">
+                                                        <div className={`project-thumb relative h-36 ${isDark ? "bg-gradient-to-br from-indigo-950/80 via-violet-950/60 to-slate-900" : "bg-gradient-to-br from-indigo-50 via-violet-50 to-slate-100 border-b border-indigo-100"}`}>
                                                             {p.activeDeploymentId && p.status === "deployed" && (
                                                                 <img
                                                                     src={`${BACKEND_UPLOAD_URL}/screenshot/serve?id=${p.activeDeploymentId}`}
                                                                     alt="Site preview"
-                                                                    className="absolute inset-0 w-full h-full object-cover object-top transition-opacity duration-700"
+                                                                    className={`absolute inset-0 w-full h-full object-cover object-top transition-opacity duration-700 ${isDark ? "" : "ring-1 ring-indigo-200 shadow-[0_2px_16px_rgba(99,102,241,0.18)]"}`}
                                                                     onError={(e) => { e.currentTarget.style.display = "none"; }}
                                                                 />
                                                             )}
                                                             {/* Gradient vignette for text readability */}
-                                                            <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a16] via-[#0a0a16]/20 to-transparent" />
+                                                            <div className={`absolute inset-0 bg-gradient-to-t ${isDark ? "from-[#0a0a16] via-[#0a0a16]/20 to-transparent" : "from-white/90 via-white/30 to-transparent"}`} />
                                                             {/* Project name overlay */}
                                                             <div className="absolute bottom-3 left-4 right-24 truncate">
-                                                                <h3 className="text-base font-bold text-white drop-shadow truncate">{p.name}</h3>
+                                                                <h3 className={`text-base font-bold drop-shadow truncate ${isDark ? "text-white" : "text-slate-800 [text-shadow:0_1px_4px_rgba(255,255,255,0.9)]"}`}>{p.name}</h3>
                                                             </div>
                                                             {/* Status badge + delete overlaid at top-right */}
                                                             <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5">

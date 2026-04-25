@@ -1,7 +1,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
- 
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -9,63 +9,63 @@
 
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
- 
+
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
- 
+
     --primary: 222.2 47.4% 11.2%;
     --primary-foreground: 210 40% 98%;
- 
+
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
- 
+
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
- 
+
     --accent: 210 40% 96.1%;
     --accent-foreground: 222.2 47.4% 11.2%;
- 
+
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
- 
+
     --radius: 0.5rem;
   }
- 
+
   .dark {
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
- 
+
     --card: 222.2 84% 4.9%;
     --card-foreground: 210 40% 98%;
- 
+
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
- 
+
     --primary: 210 40% 98%;
     --primary-foreground: 222.2 47.4% 11.2%;
- 
+
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
- 
+
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
- 
+
     --accent: 217.2 32.6% 17.5%;
     --accent-foreground: 210 40% 98%;
- 
+
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
- 
+
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
   }
 }
- 
+
 @layer base {
   * {
     @apply border-border;
@@ -93,110 +93,218 @@ html.light {
   color-scheme: light;
 }
 
+/* ─── LIGHT MODE DESIGN SYSTEM ──────────────────────────────────────────────
+   Pearl + indigo palette. Rich depth with layered shadows, visible typography,
+   and strong contrast on all interactive elements.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+html.light {
+  --lm-bg-base:    #f4f6fb;    /* page background */
+  --lm-bg-surface: #ffffff;    /* card / panel surface */
+  --lm-bg-raised:  #eef1f8;    /* inset / raised section */
+  --lm-bg-hover:   rgba(99,102,241,0.06);
+  --lm-border:     rgba(99,102,241,0.14);
+  --lm-border-md:  rgba(99,102,241,0.22);
+  --lm-text-base:  #111827;
+  --lm-text-muted: #4b5563;
+  --lm-text-faint: #6b7280;
+  --lm-accent:     #6366f1;
+  --lm-shadow-sm:  0 1px 3px rgba(99,102,241,0.10), 0 1px 2px rgba(0,0,0,0.06);
+  --lm-shadow-md:  0 4px 12px rgba(99,102,241,0.12), 0 2px 4px rgba(0,0,0,0.07);
+  --lm-shadow-lg:  0 8px 30px rgba(99,102,241,0.14), 0 4px 8px rgba(0,0,0,0.08);
+}
+
+/* Page background */
 html.light body {
-  background: #f8fafc;
-  color: #0f172a;
+  background: var(--lm-bg-base);
+  color: var(--lm-text-base);
 }
 
-/*
-  Light mode compatibility layer for existing hardcoded dark utility classes.
-  This preserves current dark mode behavior while making all views readable in light mode.
-*/
+/* ── Background overrides ─────────────────────────────────────────────────── */
 html.light [class*="bg-[#06060c]"] {
-  background-color: #f8fafc !important;
+  background-color: var(--lm-bg-base) !important;
 }
-
 html.light [class*="bg-[#0a0a16]"] {
-  background-color: #ffffff !important;
+  background-color: var(--lm-bg-surface) !important;
 }
-
 html.light [class*="bg-[#05050f]"] {
-  background-color: #f1f5f9 !important;
+  background-color: var(--lm-bg-raised) !important;
+}
+html.light [class*="bg-[#24292e]"] {
+  background-color: #e5e7eb !important;
+}
+html.light [class*="bg-black\/30"] {
+  background-color: rgba(15,23,42,0.05) !important;
+}
+html.light [class*="bg-black\/40"] {
+  background-color: rgba(15,23,42,0.07) !important;
 }
 
-html.light [class*="bg-white/5"] {
-  background-color: rgba(15, 23, 42, 0.05) !important;
+/* Translucent white → translucent indigo-tinted */
+html.light [class*="bg-white\/5"] {
+  background-color: rgba(99,102,241,0.04) !important;
+}
+html.light [class*="bg-white\/10"] {
+  background-color: rgba(99,102,241,0.07) !important;
+}
+html.light [class*="bg-white\/\[0\.02\]"] {
+  background-color: rgba(99,102,241,0.03) !important;
+}
+html.light [class*="hover\:bg-white\/5"]:hover {
+  background-color: var(--lm-bg-hover) !important;
+}
+html.light [class*="hover\:bg-white\/10"]:hover {
+  background-color: rgba(99,102,241,0.09) !important;
 }
 
-html.light [class*="bg-white/10"] {
-  background-color: rgba(15, 23, 42, 0.1) !important;
+/* ── Border overrides ─────────────────────────────────────────────────────── */
+html.light [class*="border-white\/5"] {
+  border-color: var(--lm-border) !important;
+}
+html.light [class*="border-white\/10"] {
+  border-color: var(--lm-border-md) !important;
+}
+html.light [class*="divide-white\/5"] > * + * {
+  border-color: var(--lm-border) !important;
 }
 
+/* ── Typography ───────────────────────────────────────────────────────────── */
 html.light [class*="text-white"] {
-  color: #0f172a !important;
+  color: var(--lm-text-base) !important;
 }
-
 html.light [class*="text-slate-100"] {
   color: #1e293b !important;
 }
-
+html.light [class*="text-slate-200"] {
+  color: #1e293b !important;
+}
 html.light [class*="text-slate-300"] {
-  color: #334155 !important;
+  color: var(--lm-text-muted) !important;
 }
-
 html.light [class*="text-slate-400"] {
-  color: #475569 !important;
+  color: var(--lm-text-faint) !important;
 }
-
 html.light [class*="text-slate-500"] {
-  color: #64748b !important;
+  color: #9ca3af !important;
 }
-
 html.light [class*="text-slate-600"] {
-  color: #64748b !important;
+  color: #9ca3af !important;
+}
+html.light [class*="text-black"] {
+  color: var(--lm-text-base) !important;
 }
 
-html.light [class*="placeholder:text-slate-600"]::placeholder {
-  color: #94a3b8 !important;
+/* Gradient hero text — keep vivid */
+html.light [class*="bg-gradient-to-r"][class*="from-indigo-400"][class*="text-transparent"] {
+  -webkit-text-fill-color: transparent !important;
 }
 
-html.light [class*="border-white/5"] {
-  border-color: rgba(15, 23, 42, 0.08) !important;
+/* Placeholder */
+html.light [class*="placeholder\:text-slate-600"]::placeholder {
+  color: #d1d5db !important;
 }
 
-html.light [class*="border-white/10"] {
-  border-color: rgba(15, 23, 42, 0.14) !important;
-}
-
+/* ── Gradient backgrounds ─────────────────────────────────────────────────── */
 html.light [class*="from-[#0a0a16]"] {
   --tw-gradient-from: #ffffff var(--tw-gradient-from-position) !important;
 }
-
-html.light [class*="to-[#06060c]"] {
-  --tw-gradient-to: #f8fafc var(--tw-gradient-to-position) !important;
-}
-
 html.light [class*="from-[#06060c]"] {
-  --tw-gradient-from: #f8fafc var(--tw-gradient-from-position) !important;
+  --tw-gradient-from: var(--lm-bg-base) var(--tw-gradient-from-position) !important;
+}
+html.light [class*="to-[#06060c]"] {
+  --tw-gradient-to: var(--lm-bg-base) var(--tw-gradient-to-position) !important;
+}
+html.light [class*="via-[#0a0a16]"] {
+  --tw-gradient-via: rgba(248,249,255,0.7) var(--tw-gradient-via-position) !important;
 }
 
+/* ── Mix blend (landing blobs) ────────────────────────────────────────────── */
 html.light [class*="mix-blend-screen"] {
-  mix-blend-mode: normal;
-  opacity: 0.6;
+  mix-blend-mode: multiply;
+  opacity: 0.25;
 }
 
-html.light [class*="bg-[#24292e]"] {
-  background-color: #e2e8f0 !important;
+/* ── Cards & panels — add rich shadow ────────────────────────────────────── */
+html.light [class*="rounded-2xl"][class*="border"],
+html.light [class*="rounded-3xl"][class*="border"] {
+  box-shadow: var(--lm-shadow-md);
 }
 
-html.light [class*="text-black"] {
-  color: #0f172a !important;
+/* Sticky nav — frosted pearl */
+html.light nav[class*="sticky"] {
+  background: rgba(244,246,251,0.88) !important;
+  border-bottom-color: var(--lm-border) !important;
+  backdrop-filter: blur(20px) !important;
 }
 
+/* ── Project card screenshot thumbnail ───────────────────────────────────── */
+/* Replaces dark gradient bg with a light neutral, then adds a strong
+   ring + shadow so the screenshot pops against the card surface.        */
+html.light [class*="from-indigo-950"] {
+  --tw-gradient-from: #e0e7ff var(--tw-gradient-from-position) !important;
+}
+html.light [class*="via-violet-950"] {
+  --tw-gradient-via: #ede9fe var(--tw-gradient-via-position) !important;
+}
+html.light [class*="to-slate-900"] {
+  --tw-gradient-to: #f1f5f9 var(--tw-gradient-to-position) !important;
+}
+
+/* The thumbnail container itself */
+html.light .group > [class*="relative h-36"] {
+  border-bottom: 1px solid var(--lm-border-md) !important;
+  box-shadow: inset 0 -8px 20px rgba(99,102,241,0.06) !important;
+}
+
+/* Screenshot <img> — add white ring + drop shadow */
+html.light [class*="relative h-36"] img {
+  box-shadow: 0 2px 12px rgba(99,102,241,0.18), 0 0 0 1px rgba(99,102,241,0.12) !important;
+  border-radius: 0 !important;
+}
+
+/* Gradient vignette below screenshot (text legibility) */
+html.light [class*="from-[#0a0a16]"][class*="via-[#0a0a16]"] {
+  --tw-gradient-from: rgba(255,255,255,0.9) var(--tw-gradient-from-position) !important;
+  --tw-gradient-via: rgba(255,255,255,0.4) var(--tw-gradient-via-position) !important;
+}
+
+/* Project name overlay on card — ensure dark text */
+html.light [class*="absolute bottom-3"] h3 {
+  color: #111827 !important;
+  text-shadow: 0 1px 4px rgba(255,255,255,0.9) !important;
+}
+
+/* ── Code / mono elements ─────────────────────────────────────────────────── */
+html.light [class*="font-mono"] {
+  color: #3730a3 !important;
+}
+html.light [class*="text-indigo-300"] {
+  color: #4338ca !important;
+}
+
+/* ── Backdrop blur panels ─────────────────────────────────────────────────── */
+html.light [class*="backdrop-blur"] {
+  backdrop-filter: blur(20px);
+}
+
+/* ── Scrollbar ────────────────────────────────────────────────────────────── */
+html.light * {
+  scrollbar-color: #c7d2fe transparent;
+  scrollbar-width: thin;
+}
+
+/* ── Pricing / pricing page specific ─────────────────────────────────────── */
 html.light .light-theme-toggle {
   background: rgba(248, 250, 252, 0.95);
-  border-color: rgba(15, 23, 42, 0.2);
-  color: #0f172a;
+  border-color: var(--lm-border-md);
+  color: var(--lm-text-base);
 }
-
 html.light .light-theme-toggle:hover {
   background: #ffffff;
 }
-
 html.light .pricing-pro-subtitle {
-  color: #475569 !important;
+  color: var(--lm-text-faint) !important;
 }
-
 html.light .pricing-pro-feature {
-  color: #334155 !important;
+  color: var(--lm-text-muted) !important;
 }
